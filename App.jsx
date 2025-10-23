@@ -29,6 +29,8 @@ import AddTokens from './components/AddTokens';
 import Withdraw from './components/Withdraw';
 import TransactionHistory from './components/TransactionHistory';
 import HowToPlay from './components/HowToPlay';
+import UserTokenRequest from './components/UserTokenRequest';
+import UserWins from './components/UserWins';
 
 const Stack = createStackNavigator();
 
@@ -69,6 +71,8 @@ function App() {
         <Stack.Screen name="HowToPlay" component={HowToPlay} />
         <Stack.Screen name="UserBinaryTreeMobile" component={UserBinaryTreeMobile} />
         <Stack.Screen name="TransactionHistory" component={TransactionHistory} />
+        <Stack.Screen name="UserTokenRequest" component={UserTokenRequest} />
+        <Stack.Screen name="UserWins" component={UserWins} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -24,7 +24,7 @@ import API_BASE_URL from './ApiConfig';
 import styles from './HomeStyles';
 import BottomNavigation from './BottomNavigation';
 import EntryFees from './EntryFees';
-import NetworkChecker from './NetworkChecker'; // Import the network checker
+import NetworkChecker from './NetworkChecker';
 
 const { width, height } = Dimensions.get('window');
 
@@ -55,6 +55,11 @@ const Home = () => {
   const [dropdownAnim] = useState(new Animated.Value(0));
 
   const navigation = useNavigation();
+
+  // Helper function to create unique winner ID from composite key
+  const createWinnerId = (winner) => {
+    return `${winner.date}_${winner.session}_${winner.userId}_${winner.gameId}`;
+  };
 
   // Format token count for display (show full numbers)
   const formatTokenCount = (count) => {
@@ -147,36 +152,53 @@ const Home = () => {
     }
   };
 
-  // Function to check for winners
+  // Function to check for winners - UPDATED WITH COMPOSITE KEY LOGIC
   const checkForWinners = async () => {
     try {
       if (!userData || !userData.phoneNo || !isEntryFeePaid || !isConnected) return;
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       const response = await fetch(
         `${API_BASE_URL}/get-user-winners/${userData.phoneNo}`,
         {
-          timeout: 10000, // 10 second timeout
+          signal: controller.signal,
         }
       );
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const unshownWinners = await response.json();
+      const data = await response.json();
 
-      if (unshownWinners.length > 0) {
-        const newWinners = unshownWinners.filter(
-          winner => !processedWinnerIds.has(winner.id),
-        );
+      // Check if response has success flag and winners array
+      if (data.success && data.winners && data.winners.length > 0) {
+        const unshownWinners = data.winners;
+
+        console.log(`Found ${unshownWinners.length} unshown winners`);
+
+        // Filter out already processed winners using composite key
+        const newWinners = unshownWinners.filter(winner => {
+          const winnerId = createWinnerId(winner);
+          return !processedWinnerIds.has(winnerId);
+        });
 
         if (newWinners.length > 0) {
+          // Add to processed set using composite key
           setProcessedWinnerIds(prev => {
             const newSet = new Set(prev);
-            newWinners.forEach(winner => newSet.add(winner.id));
+            newWinners.forEach(winner => {
+              const winnerId = createWinnerId(winner);
+              newSet.add(winnerId);
+            });
             return newSet;
           });
 
+          // Sort winners by timestamp if available (oldest first)
           const sortedWinners = newWinners.sort((a, b) => {
             return (a.timestamp || 0) - (b.timestamp || 0);
           });
@@ -201,8 +223,11 @@ const Home = () => {
         }
       }
     } catch (error) {
-      console.error('Error checking winners:', error);
-      // Don't show alerts for network errors to avoid spam
+      if (error.name === 'AbortError') {
+        console.error('Winner check timed out');
+      } else {
+        console.error('Error checking winners:', error);
+      }
     }
   };
 
@@ -216,7 +241,6 @@ const Home = () => {
           if (parsedData.tokens) {
             setTokenCount(parsedData.tokens);
           }
-          // Check stored entry fee status when offline
           if (parsedData.entryFee === "paid") {
             setIsEntryFeePaid(true);
             setEntryFeeChecked(true);
@@ -228,7 +252,7 @@ const Home = () => {
       console.log("Fetching tokens for:", userData.phoneNo);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const response = await fetch(
         `${API_BASE_URL}/user-profile/${userData.phoneNo}`,
@@ -270,7 +294,6 @@ const Home = () => {
         console.log("Received token update:", jsonData.tokens);
         setTokenCount(jsonData.tokens);
 
-        // Check entry fee status from server
         const entryFeeStatus = jsonData.userData?.entryFee;
         console.log("Entry fee status from server:", entryFeeStatus);
         
@@ -279,14 +302,12 @@ const Home = () => {
           setEntryFeeChecked(true);
         } else {
           setIsEntryFeePaid(false);
-          // Only show entry fee popup if we haven't checked before or if it's explicitly not paid
           if (!entryFeeChecked) {
             setShowEntryFeePopup(true);
             setEntryFeeChecked(true);
           }
         }
 
-        // Update AsyncStorage with fresh data
         const currentUserData = await AsyncStorage.getItem('userData');
         const parsedCurrentData = JSON.parse(currentUserData);
         await AsyncStorage.setItem(
@@ -299,14 +320,12 @@ const Home = () => {
         );
       } else {
         console.error("Error in token fetch:", jsonData?.message || "No valid data received");
-        // Fallback to stored data
         const storedUserData = await AsyncStorage.getItem('userData');
         if (storedUserData) {
           const parsedData = JSON.parse(storedUserData);
           if (parsedData.tokens) {
             setTokenCount(parsedData.tokens);
           }
-          // Use stored entry fee status if server fails
           if (parsedData.entryFee === "paid") {
             setIsEntryFeePaid(true);
             setEntryFeeChecked(true);
@@ -323,19 +342,16 @@ const Home = () => {
         console.error("Error fetching tokens:", error.message || error);
       }
       
-      // Fallback to stored data on error
       const storedUserData = await AsyncStorage.getItem('userData');
       if (storedUserData) {
         const parsedData = JSON.parse(storedUserData);
         if (parsedData.tokens) {
           setTokenCount(parsedData.tokens);
         }
-        // Use stored entry fee status if server fails
         if (parsedData.entryFee === "paid") {
           setIsEntryFeePaid(true);
           setEntryFeeChecked(true);
         } else if (!entryFeeChecked) {
-          // Only show entry fee popup if we haven't checked before
           setShowEntryFeePopup(true);
           setEntryFeeChecked(true);
         }
@@ -345,33 +361,31 @@ const Home = () => {
     }
   };
 
-  // Polling effect - Only run when connected and entry fee is paid
+  // Polling effect - UPDATED TO 2 SECONDS WHEN ENTRY FEE IS PAID
   useEffect(() => {
     let pollingInterval = null;
 
     if (isConnected) {
-      // Initial fetch when connected
       fetchUserTokens();
 
-      // Set up polling for real-time updates (every 30 seconds) only if connected and entry fee is paid
+      // Set up polling - 2 seconds when entry fee is paid (like web version)
       if (isEntryFeePaid) {
         pollingInterval = setInterval(() => {
           if (isConnected) {
             fetchUserTokens();
             checkForWinners();
           }
-        }, 30000);
+        }, 2000); // Changed from 30000 to 2000 to match web version
       }
     }
 
-    // Cleanup on component unmount
     return () => {
       if (pollingInterval) {
         console.log("Clearing token polling interval");
         clearInterval(pollingInterval);
       }
     };
-  }, [userData, isEntryFeePaid, isConnected]); // Add isConnected as dependency
+  }, [userData, isEntryFeePaid, isConnected]);
 
   // Handle logout
   const handleLogout = async () => {
@@ -387,7 +401,7 @@ const Home = () => {
     }
   };
 
-  // Toggle dropdown - Don't allow if entry fee is not paid
+  // Toggle dropdown
   const toggleDropdown = () => {
     if (!isEntryFeePaid) {
       return;
@@ -409,21 +423,34 @@ const Home = () => {
     }
   };
 
-  // Close winner popup
+  // Close winner popup - UPDATED WITH COMPOSITE KEY LOGIC
   const closeWinnerPopup = async () => {
     try {
       const currentWinner = winnerDetails[currentWinnerIndex];
-      if (currentWinner && currentWinner.id && isConnected) {
-        console.log(`Marking winner ${currentWinner.id} as claimed`);
-        await fetch(`${API_BASE_URL}/mark-winner-claimed/${currentWinner.id}`, {
-          method: 'POST',
-          timeout: 10000,
-        });
+      
+      if (currentWinner && isConnected) {
+        const { date, session, userId, gameId } = currentWinner;
+        console.log(`Marking winner as claimed: ${date}/${session}/${userId}/${gameId}`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        await fetch(
+          `${API_BASE_URL}/mark-winner-claimed/${date}/${session}/${userId}/${gameId}`,
+          {
+            method: 'POST',
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
       }
 
+      // If there are more winners, show the next one
       if (currentWinnerIndex < winnerDetails.length - 1) {
         setCurrentWinnerIndex(prevIndex => prevIndex + 1);
       } else {
+        // Close the popup completely
         Animated.parallel([
           Animated.spring(scaleAnim, {
             toValue: 0,
@@ -441,18 +468,31 @@ const Home = () => {
           scaleAnim.setValue(0);
           fadeAnim.setValue(0);
           
-          // Optional: Clear processed winners set after some time to allow new checks
+          // Clear processed winners set after 1 minute
           setTimeout(() => {
             setProcessedWinnerIds(new Set());
-          }, 60000); // Clear after 1 minute
+          }, 60000);
         });
       }
     } catch (error) {
-      console.error('Error marking winner as claimed:', error);
+      if (error.name === 'AbortError') {
+        console.error('Mark winner claimed timed out');
+      } else {
+        console.error('Error marking winner as claimed:', error);
+      }
+
+      // Still proceed with popup navigation even if API call fails
+      if (currentWinnerIndex < winnerDetails.length - 1) {
+        setCurrentWinnerIndex(prevIndex => prevIndex + 1);
+      } else {
+        setShowWinnerPopup(false);
+        setCurrentWinnerIndex(0);
+        setWinnerDetails([]);
+      }
     }
   };
 
-  // Handle game navigation - Don't allow if entry fee is not paid
+  // Handle game navigation
   const handleClickGame1 = () => {
     if (!isEntryFeePaid) {
       return;
@@ -460,7 +500,7 @@ const Home = () => {
     navigation.navigate('Game1');
   };
 
-  // Handle navigation - Prevent if entry fee is not paid
+  // Handle navigation
   const handleNavigation = (routeName) => {
     if (!isEntryFeePaid) {
       return;
@@ -505,7 +545,7 @@ const Home = () => {
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="rgb(42, 82, 152)" />
 
-        {/* Entry Fee Popup - Only show if user hasn't paid and we've checked */}
+        {/* Entry Fee Popup - Highest Priority */}
         {shouldShowEntryFeePopup && (
           <EntryFees 
             navigation={navigation}
@@ -542,7 +582,7 @@ const Home = () => {
                       <Text style={styles.winnerAmount}>
                         {winnerDetails[currentWinnerIndex]?.amountWon}
                       </Text>{' '}
-                      tokens in the Open-Close game (
+                      tokens in the Fruits game (
                       {winnerDetails[currentWinnerIndex]?.winType})!
                     </Text>
                   )}
@@ -618,13 +658,11 @@ const Home = () => {
 
         {/* Header Container */}
         <View>
-          {/* Professional Header */}
           <LinearGradient 
             colors={['rgb(42, 82, 152)', 'rgb(55, 98, 175)']} 
             style={styles.header}
           >
             <View style={styles.headerContent}>
-              {/* Logo and Brand */}
               <View style={styles.brandContainer}>
                 <View style={styles.logoContainer}>
                   <Image
@@ -636,7 +674,6 @@ const Home = () => {
                 <Text style={styles.brandText}>NAPHEX</Text>
               </View>
 
-              {/* Menu Button - Disabled if entry fee not paid */}
               <TouchableOpacity 
                 style={[
                   styles.menuButton,
@@ -654,7 +691,7 @@ const Home = () => {
             </View>
           </LinearGradient>
 
-          {/* Dropdown Menu - Only show if entry fee is paid */}
+          {/* Dropdown Menu */}
           {isEntryFeePaid && showDropdown && (
             <Animated.View
               style={[
@@ -704,7 +741,7 @@ const Home = () => {
           )}
         </View>
 
-        {/* Token Section - Disabled if entry fee not paid */}
+        {/* Token Section */}
         <View style={styles.tokenSection}>
           <TouchableOpacity
             style={[
@@ -776,12 +813,12 @@ const Home = () => {
             <RefreshControl 
               refreshing={refreshing} 
               onRefresh={onRefresh}
-              enabled={isConnected} // Disable refresh when offline
+              enabled={isConnected}
             />
           }
           showsVerticalScrollIndicator={false}
         >
-          {/* Game Banner - Disabled if entry fee not paid */}
+          {/* Game Banner */}
           <View style={styles.bannerContainer}>
             <TouchableOpacity 
               style={[
@@ -793,7 +830,7 @@ const Home = () => {
               disabled={!isEntryFeePaid}
             >
               <Image
-                source={require('../images/Banner-2.png')}
+                source={require('../images/final_banner_3.png')}
                 style={[
                   styles.bannerImage,
                   !isEntryFeePaid && styles.disabledImage
@@ -849,7 +886,7 @@ const Home = () => {
           </View>
         </ScrollView>
 
-        {/* Bottom Navigation Component - Only show if entry fee is paid */}
+        {/* Bottom Navigation Component */}
         {isEntryFeePaid && <BottomNavigation activeTab="Home" />}
       </View>
     </NetworkChecker>

@@ -9,10 +9,10 @@ import {
   StyleSheet,
   TextInput,
   ScrollView,
-  SafeAreaView
+  SafeAreaView,
+  Linking,
+  Modal
 } from 'react-native';
-import { CFPaymentGatewayService, CFErrorResponse } from 'react-native-cashfree-pg-sdk';
-import { CFSession, CFDropCheckoutPayment, CFEnvironment, CFThemeBuilder } from 'cashfree-pg-api-contract';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_BASE_URL from './ApiConfig';
 
@@ -24,9 +24,34 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
   const [phone, setPhone] = useState('');
   const [tokenAmount, setTokenAmount] = useState('');
   const [userTokens, setUserTokens] = useState(0);
+  const [showPaymentIdInput, setShowPaymentIdInput] = useState(false);
+  const [paymentId, setPaymentId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toasts, setToasts] = useState([]);
 
   // Token price (₹1 per token)
   const TOKEN_PRICE = 1;
+  const GST_RATE = 0.28; // 28% GST
+  const PAYMENT_GATEWAY_FEE = 0.025; // 2.5% Razorpay fee
+
+  // Payment link - Razorpay payment link
+  const RAZORPAY_PAYMENT_LINK = "https://razorpay.me/@mohammedadilbetageri?amount=tEDHZxxCtz0rKFL9kTzhOw%3D%3D";
+
+  // Toast notification function
+  const showToast = (message, type = 'success', duration = 5000) => {
+    const id = Date.now();
+    const toast = { id, message, type };
+    setToasts(prev => [...prev, toast]);
+
+    // Auto remove after duration
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, duration);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   useEffect(() => {
     AsyncStorage.getItem('userData').then(d => {
@@ -38,96 +63,6 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
     });
   }, []);
 
-  // Function to get user-friendly error message
-  const getPaymentErrorMessage = (error, orderId) => {
-    if (!error) return 'Payment failed. Please try again.';
-
-    const errorType = error.type || '';
-    const errorCode = error.code || '';
-    const errorMessage = error.message || '';
-
-    console.log('Payment Error Details:', { errorType, errorCode, errorMessage, orderId });
-
-    switch (errorType) {
-      case 'PAYMENT_DECLINED':
-        if (errorCode === 'INSUFFICIENT_FUNDS' || errorMessage.toLowerCase().includes('insufficient')) {
-          return 'Payment declined due to insufficient funds in your account. Please check your balance and try again.';
-        }
-        if (errorCode === 'BANK_DECLINED' || errorMessage.toLowerCase().includes('bank declined')) {
-          return 'Payment declined by your bank. Please contact your bank or try with a different payment method.';
-        }
-        if (errorCode === 'CARD_DECLINED' || errorMessage.toLowerCase().includes('card declined')) {
-          return 'Your card was declined. Please check your card details or try with a different card.';
-        }
-        return 'Payment was declined by your bank. Please try with a different payment method or contact your bank.';
-
-      case 'PAYMENT_TIMEOUT':
-        return 'Payment timed out. Please check your internet connection and try again.';
-
-      case 'USER_CANCELLED':
-        return 'Payment was cancelled. You can try again when ready.';
-
-      case 'NETWORK_ERROR':
-        return 'Network error occurred. Please check your internet connection and try again.';
-
-      case 'AUTHENTICATION_FAILED':
-        return 'Payment authentication failed. Please verify your payment details and try again.';
-
-      case 'PAYMENT_FAILED':
-        if (errorMessage.toLowerCase().includes('insufficient')) {
-          return 'Payment failed due to insufficient funds. Please add money to your account and try again.';
-        }
-        if (errorMessage.toLowerCase().includes('expired')) {
-          return 'Payment failed because your card has expired. Please use a valid card.';
-        }
-        if (errorMessage.toLowerCase().includes('limit exceeded')) {
-          return 'Payment failed due to transaction limit exceeded. Please contact your bank or try with a smaller amount.';
-        }
-        return 'Payment failed. Please check your payment details and try again.';
-
-      default:
-        const lowerErrorMessage = errorMessage.toLowerCase();
-        
-        if (lowerErrorMessage.includes('insufficient funds') || lowerErrorMessage.includes('insufficient balance')) {
-          return 'Payment failed due to insufficient funds in your account. Please add money and try again.';
-        }
-        
-        if (lowerErrorMessage.includes('bank declined') || lowerErrorMessage.includes('declined by bank')) {
-          return 'Payment declined by your bank. Please contact your bank or try a different payment method.';
-        }
-        
-        if (lowerErrorMessage.includes('card expired') || lowerErrorMessage.includes('expired card')) {
-          return 'Payment failed because your card has expired. Please use a valid card.';
-        }
-        
-        if (lowerErrorMessage.includes('invalid card') || lowerErrorMessage.includes('card not valid')) {
-          return 'Invalid card details. Please check your card information and try again.';
-        }
-        
-        if (lowerErrorMessage.includes('limit exceeded') || lowerErrorMessage.includes('transaction limit')) {
-          return 'Transaction limit exceeded. Please contact your bank or try with a smaller amount.';
-        }
-        
-        if (lowerErrorMessage.includes('network') || lowerErrorMessage.includes('connection')) {
-          return 'Network error. Please check your internet connection and try again.';
-        }
-        
-        if (lowerErrorMessage.includes('timeout')) {
-          return 'Payment timed out. Please try again.';
-        }
-        
-        if (lowerErrorMessage.includes('cancelled') || lowerErrorMessage.includes('canceled')) {
-          return 'Payment was cancelled. You can try again when ready.';
-        }
-
-        if (errorMessage && errorMessage.length > 10) {
-          return errorMessage;
-        }
-
-        return 'Payment failed. Please try again or contact support if the issue persists.';
-    }
-  };
-
   const handleTokenAmountChange = (value) => {
     // Only allow positive integers
     if (value === '' || (/^\d+$/.test(value) && parseInt(value) > 0)) {
@@ -136,218 +71,137 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
     }
   };
 
-  const calculateAmount = () => {
+  const calculateGST = () => {
     const tokens = parseInt(tokenAmount);
-    return tokens ? tokens * TOKEN_PRICE : 0;
+    if (!tokens) return 0;
+    return parseFloat((tokens * GST_RATE).toFixed(2));
+  };
+
+  const calculatePaymentGatewayFee = () => {
+    const tokens = parseInt(tokenAmount);
+    if (!tokens) return 0;
+    const amount = tokens * TOKEN_PRICE;
+    return parseFloat((amount * PAYMENT_GATEWAY_FEE).toFixed(2));
   };
 
   const calculateNetTokens = () => {
     const tokens = parseInt(tokenAmount);
     if (!tokens) return 0;
-    const tax = Math.floor(tokens * 0.28);
-    return tokens - tax;
+    // Net tokens = Total - GST - Gateway Fee
+    const gst = calculateGST();
+    const gatewayFee = calculatePaymentGatewayFee();
+    return parseFloat((tokens - gst - gatewayFee).toFixed(2));
   };
 
-  const startPayment = async () => {
+  const calculateTotalAmount = () => {
+    // User wants to recharge for X tokens
+    // They need to pay X amount (₹1 per token)
+    const tokens = parseInt(tokenAmount);
+    if (!tokens) return 0;
+    return tokens * TOKEN_PRICE;
+  };
+
+  const handlePayNow = () => {
     const tokens = parseInt(tokenAmount);
     
     if (!tokens || tokens < 1) {
-      return Alert.alert('Error', 'Please enter a valid token amount (minimum 1)');
-    }
-
-    if (tokens > 10000) {
-      return Alert.alert('Error', 'Maximum 10,000 tokens allowed per transaction');
+      showToast("Please enter a valid token amount (minimum 1)", "error");
+      return;
     }
 
     if (!phone) {
-      return Alert.alert('Error', 'Phone number not found');
+      showToast("Phone number not found", "error");
+      return;
     }
 
-    setLoading(true);
-    setStatus('Creating payment order...');
+    // Open Razorpay payment link
+    Linking.openURL(RAZORPAY_PAYMENT_LINK).catch(err => {
+      console.error('Error opening payment link:', err);
+      showToast("Failed to open payment link", "error");
+    });
+    
+    // Show payment ID input after opening payment link
+    setShowPaymentIdInput(true);
+    setStatus('Please complete the payment and copy your Payment ID from Razorpay');
+  };
+
+  const handleSubmitPaymentId = async () => {
+    if (!paymentId.trim()) {
+      showToast("Please enter the Payment ID", "error");
+      return;
+    }
+
+    if (!phone) {
+      showToast("Phone number not found", "error");
+      return;
+    }
+
+    const tokens = parseInt(tokenAmount);
+    if (!tokens) {
+      showToast("Invalid token amount", "error");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setStatus('Submitting token request for verification...');
 
     try {
-      const amount = tokens * TOKEN_PRICE;
-
-      // Step 1: Create Order
-      const res = await fetch(`${API_BASE_URL}/create-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(`${API_BASE_URL}/submit-token-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           phoneNo: phone, 
-          amount, 
-          orderNote: `Purchase ${tokens} tokens`
+          paymentId: paymentId.trim(),
+          requestedTokens: tokens,
+          netTokens: calculateNetTokens(),
+          amountPaid: calculateTotalAmount(),
+          gstAmount: calculateGST(),
+          gatewayFee: calculatePaymentGatewayFee()
         })
       });
-      
+
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || data.message);
-      const { paymentSessionId, orderId } = data;
-
-      setStatus('Opening payment window...');
-      const session = new CFSession(paymentSessionId, orderId, CFEnvironment.SANDBOX);
-
-      const theme = new CFThemeBuilder()
-        .setNavigationBarBackgroundColor('#007bff')
-        .setNavigationBarTextColor('#ffffff')
-        .setButtonBackgroundColor('#007bff')
-        .setButtonTextColor('#ffffff')
-        .build();
-
-      const payment = new CFDropCheckoutPayment(session, null, theme);
-
-      CFPaymentGatewayService.setCallback({
-        onVerify: async (returnedOrderId) => {
-          console.log('Payment completed, verifying order:', returnedOrderId);
-          
-          try {
-            setStatus('Verifying payment...');
-            
-            // Step 2: Verify Payment - WAIT for payment to be processed
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds for payment processing
-            
-            const vr = await fetch(`${API_BASE_URL}/verify-order`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orderId: returnedOrderId })
-            });
-            const vd = await vr.json();
-            
-            console.log('Verification response:', vd);
-            
-            if (!vd.success) {
-              throw new Error(`Payment verification failed: ${vd.message || 'Unknown error'}`);
-            }
-            
-            if (vd.status !== 'PAID') {
-              // If not PAID, wait a bit more and retry verification
-              console.log('Payment status not PAID yet, retrying verification...');
-              await new Promise(resolve => setTimeout(resolve, 3000));
-              
-              const retryVerifyRes = await fetch(`${API_BASE_URL}/verify-order`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId: returnedOrderId })
-              });
-              const retryVerifyData = await retryVerifyRes.json();
-              
-              console.log('Retry verification response:', retryVerifyData);
-              
-              if (!retryVerifyData.success || retryVerifyData.status !== 'PAID') {
-                throw new Error(`Payment verification failed. Status: ${retryVerifyData.status || 'Unknown'}`);
-              }
-            }
-
-            setStatus('Adding tokens to your account...');
-            
-            // Step 3: Add Tokens - Only after successful verification
-            const addTokensRes = await fetch(`${API_BASE_URL}/add-tokens`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                phoneNo: phone,
-                orderId: returnedOrderId,
-                amount: tokens
-              })
-            });
-
-            const tokensData = await addTokensRes.json();
-            console.log('Add tokens response:', tokensData);
-            
-            if (!tokensData.success) {
-              throw new Error(`Failed to add tokens: ${tokensData.message || 'Unknown error'}`);
-            }
-
-            // Update local state and AsyncStorage
-            const newTokenBalance = tokensData.tokens;
-            setUserTokens(newTokenBalance);
-            
-            // Update AsyncStorage
-            const userData = await AsyncStorage.getItem('userData');
-            if (userData) {
-              const updatedUserData = { ...JSON.parse(userData), tokens: newTokenBalance };
-              await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
-            }
-
-            setStatus(`Success! ${tokens} tokens added to your account!`);
-            setTokenAmount('');
-            
-            // Notify parent component
-            if (onTokensUpdated) {
-              onTokensUpdated(newTokenBalance);
-            }
-
-            // Show success alert
-            Alert.alert(
-              'Success!', 
-              `${tokens} tokens have been successfully added to your account!`,
-              [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    if (navigation) {
-                      navigation.goBack();
-                    }
-                  }
-                }
-              ]
-            );
-
-          } catch (err) {
-            console.error('Verification/Token Addition Error:', err);
-            setStatus(`Verification Error: ${err.message}`);
-            
-            Alert.alert(
-              'Verification Error', 
-              `Payment completed but verification failed: ${err.message}. Please contact support with order ID: ${returnedOrderId}`,
-              [
-                {
-                  text: 'OK',
-                  onPress: () => setStatus('')
-                }
-              ]
-            );
-          } finally {
-            setLoading(false);
-          }
-        },
-        onError: (error, returnedOrderId) => {
-          console.error('Payment Error:', { error, orderId: returnedOrderId });
-          setLoading(false);
-          
-          const userFriendlyMessage = getPaymentErrorMessage(error, returnedOrderId);
-          
-          setStatus('Payment failed. Please try again.');
-          
-          Alert.alert(
-            'Payment Failed', 
-            userFriendlyMessage,
-            [
-              {
-                text: 'Try Again',
-                onPress: () => {
-                  setStatus('');
-                }
-              }
-            ]
-          );
-        }
-      });
-
-      // Start the payment process
-      await CFPaymentGatewayService.doPayment(payment);
       
+      if (data.success) {
+        // Show success toast with detailed info
+        showToast(
+          `Token Request Submitted! Your payment is under verification. Admin will add ${calculateNetTokens().toLocaleString()} tokens to your account within 24-48 hours. Payment ID: ${paymentId.trim()}`,
+          "success",
+          8000
+        );
+        
+        setShowPaymentIdInput(false);
+        setTokenAmount('');
+        setPaymentId('');
+        setStatus('');
+
+        // Navigate back after short delay
+        setTimeout(() => {
+          if (navigation) {
+            navigation.goBack();
+          }
+        }, 1000);
+      } else {
+        throw new Error(data.error || 'Failed to submit token request');
+      }
     } catch (err) {
-      console.error('Payment Setup Error:', err);
-      setStatus(`Error: ${err.message}`);
-      Alert.alert('Error', err.message);
-      setLoading(false);
+      console.error("Error submitting payment ID:", err);
+      showToast(err.message, "error");
+      setStatus('');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleGoBack = () => {
     if (navigation) {
       navigation.goBack();
+    }
+  };
+
+  const handleViewPreviousRequests = () => {
+    if (navigation) {
+      navigation.navigate('UserTokenRequest');
     }
   };
 
@@ -363,7 +217,13 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Tokens</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity
+          style={styles.requestsButton}
+          onPress={handleViewPreviousRequests}
+          disabled={loading}
+        >
+          <Text style={styles.requestsButtonText}>Previous{'\n'}Requests</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Body */}
@@ -387,113 +247,235 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
             </Text>
           </View>
 
-          {/* Token Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Enter Token Amount to Purchase</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                value={tokenAmount}
-                onChangeText={handleTokenAmountChange}
-                placeholder="e.g., 100"
-                keyboardType="numeric"
-                editable={!loading}
-              />
-              <Text style={styles.inputSuffix}>tokens</Text>
-            </View>
-          </View>
-
-          {/* Price Display */}
-          {tokenAmount && !isNaN(parseInt(tokenAmount)) && (
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceLabel}>Total Amount to Pay</Text>
-              <Text style={styles.priceAmount}>
-                ₹{calculateAmount().toLocaleString()}
-              </Text>
-              <Text style={styles.priceNote}>₹{TOKEN_PRICE} per token</Text>
-            </View>
-          )}
-
-          {/* Tax Calculation */}
-          {tokenAmount && !isNaN(parseInt(tokenAmount)) && calculateNetTokens() > 0 && (
-            <View style={styles.taxContainer}>
-              <View style={styles.taxRow}>
-                <View style={styles.taxItem}>
-                  <Text style={styles.taxLabel}>Purchased</Text>
-                  <Text style={styles.taxValue}>
-                    {parseInt(tokenAmount).toLocaleString()}
-                  </Text>
-                </View>
-                <View style={styles.taxItem}>
-                  <Text style={[styles.taxLabel, styles.taxDeduction]}>Tax (28%)</Text>
-                  <Text style={[styles.taxValue, styles.taxDeduction]}>
-                    -{(parseInt(tokenAmount) - calculateNetTokens()).toLocaleString()}
-                  </Text>
-                </View>
-                <View style={styles.taxItem}>
-                  <Text style={styles.taxLabel}>You Get</Text>
-                  <Text style={[styles.taxValue, styles.taxFinal]}>
-                    {calculateNetTokens().toLocaleString()}
-                  </Text>
+          {!showPaymentIdInput ? (
+            <>
+              {/* Token Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Enter Token Amount to Purchase</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    value={tokenAmount}
+                    onChangeText={handleTokenAmountChange}
+                    placeholder="e.g., 100"
+                    keyboardType="numeric"
+                    editable={!loading}
+                  />
+                  <Text style={styles.inputSuffix}>tokens</Text>
                 </View>
               </View>
-            </View>
-          )}
 
-          {/* Tax Information */}
-          <View style={styles.infoContainer}>
-            <Text style={styles.infoTitle}>📋 Important Tax Information</Text>
-            <Text style={styles.infoText}>
-              • GST: 28% GST is applicable on all token purchases as per Indian tax regulations{'\n'}
-              • Processing Fee: Cashfree may charge up to 2% processing fee depending on your payment method{'\n'}
-              • Final Amount: The exact total will be confirmed at checkout
-            </Text>
-          </View>
+              {/* Price Breakdown */}
+              {tokenAmount && !isNaN(parseInt(tokenAmount)) && (
+                <>
+                  {/* Total Amount Display */}
+                  <View style={styles.totalAmountContainer}>
+                    <Text style={styles.totalAmountLabel}>Total Amount to Pay</Text>
+                    <Text style={styles.totalAmountValue}>
+                      ₹{calculateTotalAmount().toLocaleString()}
+                    </Text>
+                    <Text style={styles.totalAmountNote}>
+                      for {parseInt(tokenAmount).toLocaleString()} tokens recharge
+                    </Text>
+                  </View>
 
-          {/* Status Display */}
-          {status ? (
-            <View style={[
-              styles.statusContainer,
-              status.includes('Error') || status.includes('failed') ? styles.errorContainer : {}
-            ]}>
-              <Text style={[
-                styles.statusText,
-                status.includes('Error') || status.includes('failed') ? styles.errorText : {}
-              ]}>
-                {status}
-              </Text>
-            </View>
-          ) : null}
+                  {/* Breakdown Details */}
+                  <View style={styles.breakdownContainer}>
+                    <Text style={styles.breakdownTitle}>💰 Breakdown (from ₹{calculateTotalAmount().toLocaleString()})</Text>
+                    
+                    <View style={styles.breakdownRow}>
+                      <Text style={styles.breakdownLabel}>Base Recharge</Text>
+                      <Text style={styles.breakdownValue}>₹{calculateTotalAmount().toLocaleString()}</Text>
+                    </View>
 
-          {/* Payment Button */}
-          <TouchableOpacity
-            style={[
-              styles.paymentButton,
-              (!tokenAmount || !parseInt(tokenAmount) || loading) && styles.disabledButton
-            ]}
-            onPress={startPayment}
-            disabled={!tokenAmount || !parseInt(tokenAmount) || loading}
-          >
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#ffffff" />
-                <Text style={styles.buttonText}>Processing...</Text>
+                    <View style={styles.breakdownRow}>
+                      <Text style={[styles.breakdownLabel, styles.deductionLabel]}>- GST (28%)</Text>
+                      <Text style={[styles.breakdownValue, styles.deductionValue]}>-₹{calculateGST().toLocaleString()}</Text>
+                    </View>
+
+                    <View style={styles.breakdownRow}>
+                      <Text style={[styles.breakdownLabel, styles.deductionLabel]}>- Gateway Fee (2.5%)</Text>
+                      <Text style={[styles.breakdownValue, styles.deductionValue]}>-₹{calculatePaymentGatewayFee().toLocaleString()}</Text>
+                    </View>
+
+                    <View style={styles.breakdownDivider} />
+
+                    <View style={styles.breakdownRow}>
+                      <Text style={styles.breakdownFinalLabel}>You Will Get</Text>
+                      <Text style={styles.breakdownFinalValue}>{calculateNetTokens().toLocaleString()} tokens</Text>
+                    </View>
+                  </View>
+                </>
+              )}
+
+              {/* Important Information */}
+              <View style={styles.infoContainer}>
+                <Text style={styles.infoTitle}>📋 Important Information</Text>
+                <Text style={styles.infoText}>
+                  • Payment will be verified by admin within 4-24 hours{'\n'}
+                  • You will receive tokens after successful verification{'\n'}
+                  • Keep your Payment ID safe for reference{'\n'}
+                  • 28% GST + 2.5% gateway fee will be deducted from recharge amount{'\n'}
+                  • Example: ₹100 recharge = ₹100 - ₹28 (GST) - ₹2.5 (fee) = ~69.5 tokens{'\n'}
+                  • No maximum limit - you can purchase any amount of tokens
+                </Text>
               </View>
-            ) : tokenAmount && parseInt(tokenAmount) > 0 ? (
-              <Text style={styles.buttonText}>Proceed to Pay ₹{calculateAmount()}</Text>
-            ) : (
-              <Text style={styles.buttonText}>Enter Amount to Continue</Text>
-            )}
-          </TouchableOpacity>
+
+              {/* Status Display */}
+              {status ? (
+                <View style={[
+                  styles.statusContainer,
+                  status.includes('Error') || status.includes('failed') ? styles.errorContainer : {}
+                ]}>
+                  <Text style={[
+                    styles.statusText,
+                    status.includes('Error') || status.includes('failed') ? styles.errorText : {}
+                  ]}>
+                    {status}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Payment Button */}
+              <TouchableOpacity
+                style={[
+                  styles.paymentButton,
+                  (!tokenAmount || !parseInt(tokenAmount) || loading) && styles.disabledButton
+                ]}
+                onPress={handlePayNow}
+                disabled={!tokenAmount || !parseInt(tokenAmount) || loading}
+              >
+                <Text style={styles.buttonText}>
+                  {tokenAmount && parseInt(tokenAmount) > 0 ? 
+                    `💳 Pay ₹${calculateTotalAmount().toLocaleString()}` : 
+                    'Enter Amount'
+                  }
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            // Payment ID Input Section
+            <>
+              {/* Warning Message */}
+              <View style={styles.warningContainer}>
+                <Text style={styles.warningTitle}>⚠️ Important:</Text>
+                <Text style={styles.warningText}>
+                  After completing payment on Razorpay, copy the <Text style={styles.boldText}>Payment ID</Text> and paste it below.
+                </Text>
+              </View>
+
+              {/* Payment ID Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>
+                  Enter Payment ID <Text style={styles.requiredStar}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={paymentId}
+                  onChangeText={setPaymentId}
+                  placeholder="e.g., pay_ABC123xyz"
+                  editable={!isSubmitting}
+                />
+              </View>
+
+              {/* Summary */}
+              <View style={styles.summaryContainer}>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Requested Tokens:</Text>
+                  <Text style={styles.summaryValue}>{parseInt(tokenAmount).toLocaleString()}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>You Will Get:</Text>
+                  <Text style={styles.summaryValue}>{calculateNetTokens().toLocaleString()} tokens</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Amount Paid:</Text>
+                  <Text style={styles.summaryValue}>₹{calculateTotalAmount().toLocaleString()}</Text>
+                </View>
+              </View>
+
+              {/* Status Display */}
+              {status ? (
+                <View style={[
+                  styles.statusContainer,
+                  status.includes('Error') || status.includes('failed') ? styles.errorContainer : styles.successContainer
+                ]}>
+                  <Text style={[
+                    styles.statusText,
+                    status.includes('Error') || status.includes('failed') ? styles.errorText : styles.successText
+                  ]}>
+                    {status}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  (!paymentId.trim() || isSubmitting) && styles.disabledButton
+                ]}
+                onPress={handleSubmitPaymentId}
+                disabled={!paymentId.trim() || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="#ffffff" />
+                    <Text style={styles.buttonText}>Submitting...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.buttonText}>✅ Submit Payment ID</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Back Button */}
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => {
+                  setShowPaymentIdInput(false);
+                  setPaymentId('');
+                  setStatus('');
+                }}
+              >
+                <Text style={styles.secondaryButtonText}>← Back to Token Selection</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
           {/* Security Info */}
           <View style={styles.securityContainer}>
+            <Text style={styles.securityIcon}>🔒</Text>
             <Text style={styles.securityText}>
-              🔒 Secure Payment powered by Cashfree Payments
+              <Text style={styles.securityBold}>Secure Payment</Text> powered by Razorpay
             </Text>
           </View>
         </View>
       </ScrollView>
+
+      {/* Toast Container */}
+      <View style={styles.toastContainer}>
+        {toasts.map((toast) => (
+          <View
+            key={toast.id}
+            style={[
+              styles.toast,
+              toast.type === 'success' ? styles.toastSuccess : 
+              toast.type === 'error' ? styles.toastError : styles.toastInfo
+            ]}
+          >
+            <Text style={styles.toastIcon}>
+              {toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}
+            </Text>
+            <Text style={styles.toastMessage}>{toast.message}</Text>
+            <TouchableOpacity
+              onPress={() => removeToast(toast.id)}
+              style={styles.toastClose}
+            >
+              <Text style={styles.toastCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
     </SafeAreaView>
   );
 };
@@ -507,9 +489,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#007bff',
+    backgroundColor: '#2563eb',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 34,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -519,21 +501,36 @@ const styles = StyleSheet.create({
   backButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   backButtonText: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#ffffff',
   },
-  placeholder: {
-    width: 60,
+  requestsButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    alignItems: 'center',
+  },
+  requestsButtonText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 14,
   },
   scrollView: {
     flex: 1,
@@ -557,9 +554,11 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   balanceLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748b',
     marginBottom: 4,
   },
@@ -572,10 +571,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   inputLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#374151',
     marginBottom: 8,
+  },
+  requiredStar: {
+    color: '#dc2626',
   },
   inputWrapper: {
     position: 'relative',
@@ -588,71 +590,86 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderRadius: 12,
     backgroundColor: '#ffffff',
-    paddingRight: 70,
   },
   inputSuffix: {
     position: 'absolute',
     right: 14,
-    top: '50%',
-    transform: [{ translateY: -10 }],
+    top: 14,
     color: '#9ca3af',
-    fontSize: 16,
+    fontSize: 15,
   },
-  priceContainer: {
-    backgroundColor: '#ecfdf5',
+  totalAmountContainer: {
+    backgroundColor: '#eff6ff',
     borderWidth: 2,
-    borderColor: '#10b981',
+    borderColor: '#3b82f6',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 20,
+    marginBottom: 16,
     alignItems: 'center',
   },
-  priceLabel: {
-    fontSize: 14,
-    color: '#065f46',
+  totalAmountLabel: {
+    fontSize: 13,
+    color: '#1e40af',
     marginBottom: 4,
   },
-  priceAmount: {
-    fontSize: 24,
+  totalAmountValue: {
+    fontSize: 28,
     fontWeight: '700',
-    color: '#065f46',
+    color: '#1e40af',
   },
-  priceNote: {
+  totalAmountNote: {
     fontSize: 12,
-    color: '#047857',
-    marginTop: 2,
+    color: '#3b82f6',
+    marginTop: 4,
   },
-  taxContainer: {
+  breakdownContainer: {
     backgroundColor: '#f0fdf4',
     borderWidth: 2,
     borderColor: '#10b981',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  taxRow: {
+  breakdownTitle: {
+    fontSize: 13,
+    color: '#065f46',
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  taxItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  taxLabel: {
-    fontSize: 12,
-    color: '#065f46',
-    marginBottom: 4,
-  },
-  taxValue: {
-    fontSize: 16,
-    fontWeight: '700',
+  breakdownLabel: {
+    fontSize: 13,
     color: '#065f46',
   },
-  taxDeduction: {
+  breakdownValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#065f46',
+  },
+  deductionLabel: {
     color: '#dc2626',
   },
-  taxFinal: {
+  deductionValue: {
+    color: '#dc2626',
+  },
+  breakdownDivider: {
+    height: 2,
+    backgroundColor: '#10b981',
+    marginVertical: 8,
+  },
+  breakdownFinalLabel: {
+    fontSize: 14,
+    color: '#065f46',
+    fontWeight: '700',
+  },
+  breakdownFinalValue: {
     fontSize: 18,
+    fontWeight: '700',
+    color: '#065f46',
   },
   infoContainer: {
     backgroundColor: '#fffbeb',
@@ -673,33 +690,96 @@ const styles = StyleSheet.create({
     color: '#92400e',
     lineHeight: 18,
   },
+  warningContainer: {
+    backgroundColor: '#fff3cd',
+    borderWidth: 1,
+    borderColor: '#ffc107',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  warningTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#856404',
+    marginBottom: 4,
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#856404',
+    lineHeight: 18,
+  },
+  boldText: {
+    fontWeight: '700',
+  },
+  summaryContainer: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    color: '#065f46',
+    fontWeight: '600',
+  },
+  summaryValue: {
+    fontSize: 13,
+    color: '#065f46',
+    fontWeight: '700',
+  },
   statusContainer: {
     backgroundColor: '#eff6ff',
-    borderRadius: 6,
-    padding: 12,
-    marginBottom: 20,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#3b82f6',
   },
   statusText: {
-    fontSize: 14,
-    color: '#0066cc',
+    fontSize: 13,
+    color: '#1e40af',
     textAlign: 'center',
     fontWeight: '500',
   },
   errorContainer: {
     backgroundColor: '#fef2f2',
     borderColor: '#f87171',
-    borderWidth: 1,
   },
   errorText: {
     color: '#dc2626',
   },
+  successContainer: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#10b981',
+  },
+  successText: {
+    color: '#065f46',
+  },
   paymentButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#2563eb',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#007bff',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  submitButton: {
+    backgroundColor: '#10b981',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -715,20 +795,95 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#ffffff',
     marginLeft: 8,
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
   },
   securityContainer: {
     backgroundColor: '#f8fafc',
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  securityIcon: {
+    fontSize: 16,
+    marginRight: 8,
   },
   securityText: {
     fontSize: 12,
     color: '#64748b',
+  },
+  securityBold: {
+    fontWeight: '700',
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    left: 20,
+    zIndex: 10000,
+  },
+  toast: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  toastSuccess: {
+    backgroundColor: '#10b981',
+  },
+  toastError: {
+    backgroundColor: '#ef4444',
+  },
+  toastInfo: {
+    backgroundColor: '#3b82f6',
+  },
+  toastIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  toastMessage: {
+    flex: 1,
+    fontSize: 13,
+    color: '#ffffff',
+    lineHeight: 20,
+  },
+  toastClose: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  toastCloseText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 

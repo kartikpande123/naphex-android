@@ -152,18 +152,15 @@ const MyAccount = ({ navigation }) => {
         if (Platform.OS === 'android') {
           ToastAndroid.show(`${label} shared successfully!`, ToastAndroid.SHORT);
         } else {
-          // On iOS, we can't detect if it was actually shared or dismissed
           if (result.activityType) {
             Alert.alert('Success', `${label} shared successfully!`);
           }
         }
       } else if (result.action === Share.dismissedAction) {
-        // User dismissed the share dialog
         console.log('Share dismissed');
       }
     } catch (error) {
       console.error('Share error:', error);
-      // Fallback to copying to clipboard
       await copyToClipboard(shareText, `${label} share text`);
       if (Platform.OS === 'android') {
         ToastAndroid.show(`${label} share text copied to clipboard!`, ToastAndroid.LONG);
@@ -212,15 +209,22 @@ const MyAccount = ({ navigation }) => {
   };
 
   const handleBankDetails = () => {
-  navigation.navigate('BankDetails');
-};
+    navigation.navigate('BankDetails');
+  };
 
-const handleAddToken = ()=>{
-  navigation.navigate("AddTokens")
-}
-const handleWithdraw = ()=>{
-  navigation.navigate("Withdraw")
-}
+  const handleAddToken = () => {
+    navigation.navigate("AddTokens");
+  };
+
+  const handleWithdraw = () => {
+    navigation.navigate("Withdraw");
+  };
+
+  // NEW: Handle Wins navigation
+  const handleWins = () => {
+    navigation.navigate("UserWins");
+  };
+
   const getUserId = () => {
     if (userData?.userIds?.myuserid) {
       return userData.userIds.myuserid;
@@ -470,79 +474,85 @@ const handleWithdraw = ()=>{
   );
 
   const renderAccount = () => (
-  <ScrollView style={styles.tabContent} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-    <View style={styles.overviewCard}>
-      <View style={styles.tokenSummary}>
-        <View style={styles.tokenIconContainer}>
-          <Icon name="account-balance-wallet" size={48} color="#007bff" />
+    <ScrollView style={styles.tabContent} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.overviewCard}>
+        <View style={styles.tokenSummary}>
+          <View style={styles.tokenIconContainer}>
+            <Icon name="account-balance-wallet" size={48} color="#007bff" />
+          </View>
+          <Text style={styles.tokenAmount}>{(userData.tokens || 50000).toLocaleString()}</Text>
+          <Text style={styles.tokenLabel}>Available Tokens</Text>
         </View>
-        <Text style={styles.tokenAmount}>{(userData.tokens || 50000).toLocaleString()}</Text>
-        <Text style={styles.tokenLabel}>Available Tokens</Text>
-      </View>
-      
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handleAddToken}>
-          <Icon name="add-circle" size={20} color="white" style={styles.buttonIcon} />
-          <Text style={styles.primaryButtonText}>Add Tokens</Text>
+        
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleAddToken}>
+            <Icon name="add-circle" size={20} color="white" style={styles.buttonIcon} />
+            <Text style={styles.primaryButtonText}>Add Tokens</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleWithdraw}>
+            <Icon name="account-balance" size={20} color="#007bff" style={styles.buttonIcon} />
+            <Text style={styles.secondaryButtonText}>Withdraw</Text>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Bank Details Button */}
+        <TouchableOpacity style={styles.bankDetailsButton} onPress={handleBankDetails}>
+          <Icon name="account-balance" size={20} color="#28a745" style={styles.buttonIcon} />
+          <Text style={styles.bankDetailsButtonText}>Bank Details</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleWithdraw}>
-          <Icon name="account-balance" size={20} color="#007bff" style={styles.buttonIcon} />
-          <Text style={styles.secondaryButtonText}>Withdraw</Text>
+        
+        {/* Transaction History Button */}
+        <TouchableOpacity style={styles.transactionButton} onPress={handleTransactionHistory}>
+          <Icon name="history" size={20} color="#007bff" style={styles.buttonIcon} />
+          <Text style={styles.transactionButtonText}>Transaction History</Text>
         </TouchableOpacity>
-      </View>
-      
-      {/* Bank Details Button */}
-      <TouchableOpacity style={styles.bankDetailsButton} onPress={handleBankDetails}>
-        <Icon name="account-balance" size={20} color="#28a745" style={styles.buttonIcon} />
-        <Text style={styles.bankDetailsButtonText}>Bank Details</Text>
-      </TouchableOpacity>
-      
-      {/* Transaction History Button */}
-      <TouchableOpacity style={styles.transactionButton} onPress={handleTransactionHistory}>
-        <Icon name="history" size={20} color="#007bff" style={styles.buttonIcon} />
-        <Text style={styles.transactionButtonText}>Transaction History</Text>
-      </TouchableOpacity>
-    </View>
 
-    <View style={styles.summaryCard}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardIconContainer}>
-          <Icon name="account-circle" size={24} color="#007bff" />
-        </View>
-        <View style={styles.cardTitleContainer}>
-          <Text style={styles.cardTitle}>Account Summary</Text>
-          <Text style={styles.cardSubtitle}>Your account information</Text>
-        </View>
+        {/* NEW: Wins Button */}
+        <TouchableOpacity style={styles.winsButton} onPress={handleWins}>
+          <Icon name="emoji-events" size={20} color="#ffc107" style={styles.buttonIcon} />
+          <Text style={styles.winsButtonText}>Wins</Text>
+        </TouchableOpacity>
       </View>
-      
-      <View style={styles.summaryContent}>
-        <View style={styles.summaryItem}>
-          <View style={styles.detailLeft}>
-            <Icon name="person" size={20} color="#666" style={styles.detailIcon} />
-            <Text style={styles.summaryLabel}>Full Name</Text>
+
+      <View style={styles.summaryCard}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardIconContainer}>
+            <Icon name="account-circle" size={24} color="#007bff" />
           </View>
-          <Text style={styles.summaryValue}>{userData.name}</Text>
+          <View style={styles.cardTitleContainer}>
+            <Text style={styles.cardTitle}>Account Summary</Text>
+            <Text style={styles.cardSubtitle}>Your account information</Text>
+          </View>
         </View>
         
-        <View style={styles.summaryItem}>
-          <View style={styles.detailLeft}>
-            <Icon name="phone" size={20} color="#666" style={styles.detailIcon} />
-            <Text style={styles.summaryLabel}>Phone Number</Text>
+        <View style={styles.summaryContent}>
+          <View style={styles.summaryItem}>
+            <View style={styles.detailLeft}>
+              <Icon name="person" size={20} color="#666" style={styles.detailIcon} />
+              <Text style={styles.summaryLabel}>Full Name</Text>
+            </View>
+            <Text style={styles.summaryValue}>{userData.name}</Text>
           </View>
-          <Text style={styles.summaryValue}>{userData.phoneNo}</Text>
-        </View>
-        
-        <View style={styles.summaryItem}>
-          <View style={styles.detailLeft}>
-            <Icon name="location-city" size={20} color="#666" style={styles.detailIcon} />
-            <Text style={styles.summaryLabel}>Location</Text>
+          
+          <View style={styles.summaryItem}>
+            <View style={styles.detailLeft}>
+              <Icon name="phone" size={20} color="#666" style={styles.detailIcon} />
+              <Text style={styles.summaryLabel}>Phone Number</Text>
+            </View>
+            <Text style={styles.summaryValue}>{userData.phoneNo}</Text>
           </View>
-          <Text style={styles.summaryValue}>{userData.city}, {userData.state}</Text>
+          
+          <View style={styles.summaryItem}>
+            <View style={styles.detailLeft}>
+              <Icon name="location-city" size={20} color="#666" style={styles.detailIcon} />
+              <Text style={styles.summaryLabel}>Location</Text>
+            </View>
+            <Text style={styles.summaryValue}>{userData.city}, {userData.state}</Text>
+          </View>
         </View>
       </View>
-    </View>
-  </ScrollView>
-);
+    </ScrollView>
+  );
 
   const renderKYC = () => (
     <ScrollView style={styles.tabContent} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -1153,7 +1163,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-  // Updated button styles for referral section
+  // Button styles
   buttonRow: {
     flexDirection: 'row',
     width: '100%',
@@ -1275,6 +1285,27 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
+  // Bank Details Button
+  bankDetailsButton: {
+    backgroundColor: 'white',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#28a745',
+    width: '100%',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  bankDetailsButtonText: {
+    color: '#28a745',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+
   // Transaction History Button
   transactionButton: {
     backgroundColor: 'white',
@@ -1291,6 +1322,27 @@ const styles = StyleSheet.create({
   },
   transactionButtonText: {
     color: '#007bff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+
+  // NEW: Wins Button
+  winsButton: {
+    backgroundColor: 'white',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#ffc107',
+    width: '100%',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  winsButtonText: {
+    color: '#ffc107',
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 4,
@@ -1686,25 +1738,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     fontWeight: '500',
-  },
-   bankDetailsButton: {
-    backgroundColor: 'white',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#28a745',
-    width: '100%',
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 12,
-  },
-  bankDetailsButtonText: {
-    color: '#28a745',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 4,
   },
 });
 

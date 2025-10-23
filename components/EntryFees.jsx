@@ -8,23 +8,30 @@ import {
   Modal,
   Dimensions,
   StyleSheet,
-  BackHandler
+  BackHandler,
+  TextInput,
+  Linking,
+  ScrollView
 } from 'react-native';
-import { CFPaymentGatewayService, CFErrorResponse } from 'react-native-cashfree-pg-sdk';
-import { CFSession, CFDropCheckoutPayment, CFEnvironment, CFThemeBuilder } from 'cashfree-pg-api-contract';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_BASE_URL from './ApiConfig';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
+const RAZORPAY_LINK = "https://razorpay.me/@mohammedadilbetageri?amount=zgioswZa9n4qt5x9yD7i%2BQ%3D%3D";
 
 export default function EntryFees({ navigation, onContinue }) {
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState('');
   const [phone, setPhone] = useState('');
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [entryFeeStatus, setEntryFeeStatus] = useState('checking'); // checking, unpaid, pending, paid
+  const [showOrderIdInput, setShowOrderIdInput] = useState(false);
+  const [orderId, setOrderId] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('');
 
   useEffect(() => {
+    // Get user data and check entry fee status
     AsyncStorage.getItem('userData').then(d => {
       if (d) {
         const user = JSON.parse(d);
@@ -32,22 +39,66 @@ export default function EntryFees({ navigation, onContinue }) {
       }
     });
 
+    checkEntryFeeStatus();
+
     // Prevent back button until payment is complete
     const backAction = () => {
-      if (!paymentSuccess) {
+      if (entryFeeStatus !== 'paid') {
         Alert.alert(
           "Payment Required", 
           "Please complete the entry fee to continue.",
           [{ text: "OK", onPress: () => null }]
         );
-        return true; // Prevent default back action
+        return true;
       }
-      return false; // Allow default back action
+      return false;
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
-  }, [paymentSuccess]);
+  }, [entryFeeStatus]);
+
+  // Check if user has already paid entry fee
+  const checkEntryFeeStatus = async () => {
+    const userData = await AsyncStorage.getItem('userData');
+    if (!userData) {
+      setEntryFeeStatus('unpaid');
+      return;
+    }
+
+    const user = JSON.parse(userData);
+    const phoneNo = user.phoneNo;
+
+    if (!phoneNo) {
+      setEntryFeeStatus('unpaid');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/check-entry-fee`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNo })
+      });
+
+      const data = await res.json();
+      
+      if (data.success && data.entryFee === 'paid') {
+        setEntryFeeStatus('paid');
+        setTimeout(() => {
+          if (onContinue) onContinue();
+        }, 100);
+      } else if (data.success && data.entryFee === 'pending') {
+        setEntryFeeStatus('pending');
+        setVerificationStatus('Your payment is under verification. Please wait for admin approval.');
+      } else {
+        setEntryFeeStatus('unpaid');
+      }
+    } catch (err) {
+      console.error('Error checking entry fee status:', err);
+      setEntryFeeStatus('unpaid');
+    }
+  };
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('userData');
@@ -57,204 +108,114 @@ export default function EntryFees({ navigation, onContinue }) {
     });
   };
 
-  // Function to get user-friendly error message
-  const getPaymentErrorMessage = (error, orderId) => {
-    if (!error) return 'Payment failed. Please try again.';
-
-    // Check error type and code for specific messages
-    const errorType = error.type || '';
-    const errorCode = error.code || '';
-    const errorMessage = error.message || '';
-
-    console.log('Payment Error Details:', { errorType, errorCode, errorMessage, orderId });
-
-    // Handle different types of payment failures
-    switch (errorType) {
-      case 'PAYMENT_DECLINED':
-        if (errorCode === 'INSUFFICIENT_FUNDS' || errorMessage.toLowerCase().includes('insufficient')) {
-          return 'Payment declined due to insufficient funds in your account. Please check your balance and try again.';
-        }
-        if (errorCode === 'BANK_DECLINED' || errorMessage.toLowerCase().includes('bank declined')) {
-          return 'Payment declined by your bank. Please contact your bank or try with a different payment method.';
-        }
-        if (errorCode === 'CARD_DECLINED' || errorMessage.toLowerCase().includes('card declined')) {
-          return 'Your card was declined. Please check your card details or try with a different card.';
-        }
-        return 'Payment was declined by your bank. Please try with a different payment method or contact your bank.';
-
-      case 'PAYMENT_TIMEOUT':
-        return 'Payment timed out. Please check your internet connection and try again.';
-
-      case 'USER_CANCELLED':
-        return 'Payment was cancelled. You can try again when ready.';
-
-      case 'NETWORK_ERROR':
-        return 'Network error occurred. Please check your internet connection and try again.';
-
-      case 'AUTHENTICATION_FAILED':
-        return 'Payment authentication failed. Please verify your payment details and try again.';
-
-      case 'PAYMENT_FAILED':
-        if (errorMessage.toLowerCase().includes('insufficient')) {
-          return 'Payment failed due to insufficient funds. Please add money to your account and try again.';
-        }
-        if (errorMessage.toLowerCase().includes('expired')) {
-          return 'Payment failed because your card has expired. Please use a valid card.';
-        }
-        if (errorMessage.toLowerCase().includes('limit exceeded')) {
-          return 'Payment failed due to transaction limit exceeded. Please contact your bank or try with a smaller amount.';
-        }
-        return 'Payment failed. Please check your payment details and try again.';
-
-      default:
-        // Check error message for common patterns
-        const lowerErrorMessage = errorMessage.toLowerCase();
-        
-        if (lowerErrorMessage.includes('insufficient funds') || lowerErrorMessage.includes('insufficient balance')) {
-          return 'Payment failed due to insufficient funds in your account. Please add money and try again.';
-        }
-        
-        if (lowerErrorMessage.includes('bank declined') || lowerErrorMessage.includes('declined by bank')) {
-          return 'Payment declined by your bank. Please contact your bank or try a different payment method.';
-        }
-        
-        if (lowerErrorMessage.includes('card expired') || lowerErrorMessage.includes('expired card')) {
-          return 'Payment failed because your card has expired. Please use a valid card.';
-        }
-        
-        if (lowerErrorMessage.includes('invalid card') || lowerErrorMessage.includes('card not valid')) {
-          return 'Invalid card details. Please check your card information and try again.';
-        }
-        
-        if (lowerErrorMessage.includes('limit exceeded') || lowerErrorMessage.includes('transaction limit')) {
-          return 'Transaction limit exceeded. Please contact your bank or try with a smaller amount.';
-        }
-        
-        if (lowerErrorMessage.includes('network') || lowerErrorMessage.includes('connection')) {
-          return 'Network error. Please check your internet connection and try again.';
-        }
-        
-        if (lowerErrorMessage.includes('timeout')) {
-          return 'Payment timed out. Please try again.';
-        }
-        
-        if (lowerErrorMessage.includes('cancelled') || lowerErrorMessage.includes('canceled')) {
-          return 'Payment was cancelled. You can try again when ready.';
-        }
-
-        // Return the original error message if it's descriptive enough
-        if (errorMessage && errorMessage.length > 10) {
-          return errorMessage;
-        }
-
-        return 'Payment failed. Please try again or contact support if the issue persists.';
+  const handlePayNow = async () => {
+    try {
+      const supported = await Linking.canOpenURL(RAZORPAY_LINK);
+      if (supported) {
+        await Linking.openURL(RAZORPAY_LINK);
+        // Show order ID input after opening payment link
+        setTimeout(() => {
+          setShowOrderIdInput(true);
+          setPaymentStatus('Please complete the payment and copy your Order ID from Razorpay');
+        }, 1000);
+      } else {
+        Alert.alert('Error', 'Cannot open payment link');
+      }
+    } catch (error) {
+      console.error('Error opening Razorpay link:', error);
+      Alert.alert('Error', 'Failed to open payment link');
     }
   };
 
-  const startPayment = async () => {
-    if (!phone) {
-      return Alert.alert('Error', 'Phone number not found');
+  const handleSubmitOrderId = async () => {
+    if (!orderId.trim()) {
+      Alert.alert('Error', 'Please enter the Order ID');
+      return;
     }
 
-    setLoading(true);
-    setStatus('Creating payment order...');
+    if (!phone) {
+      Alert.alert('Error', 'Phone number not found');
+      return;
+    }
+
+    setIsVerifying(true);
+    setVerificationStatus('Submitting order ID for verification...');
 
     try {
-      const res = await fetch(`${API_BASE_URL}/create-order`, {
+      console.log('Submitting order ID:', { phoneNo: phone, orderId: orderId.trim(), amount: 500 });
+      
+      const res = await fetch(`${API_BASE_URL}/submit-order-id`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNo: phone, amount: 500, orderNote: 'Entry Fee' })
+        body: JSON.stringify({ 
+          phoneNo: phone, 
+          orderId: orderId.trim(),
+          amount: 500
+        })
       });
+
+      console.log('Response status:', res.status);
+      
+      // Check if response is ok
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`Server error: ${res.status}. ${errorText}`);
+      }
+
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || data.message);
-      const { paymentSessionId, orderId } = data;
-
-      setStatus('Opening payment window...');
-      const session = new CFSession(paymentSessionId, orderId, CFEnvironment.SANDBOX);
-
-      // Fixed theme builder - removed non-existent method
-      const theme = new CFThemeBuilder()
-        .setNavigationBarBackgroundColor('#007bff')
-        .setNavigationBarTextColor('#ffffff')
-        .setButtonBackgroundColor('#007bff')
-        .setButtonTextColor('#ffffff')
-        .build();
-
-      const payment = new CFDropCheckoutPayment(session, null, theme);
-
-      CFPaymentGatewayService.setCallback({
-        onVerify: async (returnedOrderId) => {
-          setStatus('Verifying payment...');
-          try {
-            const vr = await fetch(`${API_BASE_URL}/verify-order`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orderId: returnedOrderId })
-            });
-            const vd = await vr.json();
-            if (!vd.success || vd.status !== 'PAID') {
-              throw new Error('Payment verification failed');
-            }
-
-            setStatus('Recording entry fee...');
-            await fetch(`${API_BASE_URL}/pay-entry-fee`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                phoneNo: phone, 
-                orderId: returnedOrderId, 
-                paymentDetails: vd.paymentDetails 
-              })
-            });
-
-            setStatus('Payment successful! You got 200 tokens. Congratulations!');
-            setPaymentSuccess(true);
-          } catch (err) {
-            setStatus(`Error: ${err.message}`);
-            Alert.alert('Verification Error', err.message);
-          } finally {
-            setLoading(false);
-          }
-        },
-        onError: (error, returnedOrderId) => {
-          setLoading(false);
-          
-          // Get user-friendly error message
-          const userFriendlyMessage = getPaymentErrorMessage(error, returnedOrderId);
-          
-          setStatus('Payment failed. Please try again.');
-          
-          // Show detailed error in alert
-          Alert.alert(
-            'Payment Failed', 
-            userFriendlyMessage,
-            [
-              {
-                text: 'Try Again',
-                onPress: () => {
-                  setStatus('');
-                }
-              }
-            ]
-          );
-          
-          // Log detailed error for debugging
-          console.error('Payment Error:', {
-            error,
-            orderId: returnedOrderId,
-            userMessage: userFriendlyMessage
-          });
-        }
-      });
-
-      await CFPaymentGatewayService.doPayment(payment);
+      console.log('Response data:', data);
+      
+      if (data.success) {
+        setEntryFeeStatus('pending');
+        setVerificationStatus('✅ Order ID submitted successfully! Your payment is under verification. Admin will verify your payment soon.');
+        setShowOrderIdInput(false);
+        setOrderId('');
+        Alert.alert(
+          'Success',
+          'Order ID submitted successfully! Your payment is under verification. This typically takes 4-24 hours.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        throw new Error(data.error || data.message || 'Failed to submit order ID');
+      }
     } catch (err) {
-      console.error(err);
-      setStatus(`Error: ${err.message}`);
-      Alert.alert('Error', err.message);
-      setLoading(false);
+      console.error('Error submitting order ID:', err);
+      const errorMessage = err.message || 'Failed to submit order ID. Please try again.';
+      setVerificationStatus(`❌ ${errorMessage}`);
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsVerifying(false);
     }
   };
+
+  // Checking Status Screen
+  if (entryFeeStatus === 'checking') {
+    return (
+      <Modal visible={true} transparent={true} animationType="fade">
+        <View style={styles.checkingOverlay}>
+          <View style={styles.checkingContainer}>
+            <ActivityIndicator size="large" color="#007bff" />
+            <Text style={styles.checkingText}>Checking payment status...</Text>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  // Paid Status Screen
+  if (entryFeeStatus === 'paid') {
+    return (
+      <Modal visible={true} transparent={true} animationType="fade">
+        <View style={styles.checkingOverlay}>
+          <View style={styles.checkingContainer}>
+            <Text style={styles.successIcon}>✅</Text>
+            <Text style={styles.checkingText}>Payment verified! Redirecting to dashboard...</Text>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   return (
     <>
@@ -264,7 +225,7 @@ export default function EntryFees({ navigation, onContinue }) {
         transparent={true}
         animationType="slide"
         onRequestClose={() => {
-          if (!paymentSuccess) {
+          if (entryFeeStatus !== 'paid') {
             Alert.alert(
               "Payment Required", 
               "Please complete the entry fee to continue."
@@ -273,89 +234,153 @@ export default function EntryFees({ navigation, onContinue }) {
         }}
       >
         <View style={styles.overlay}>
-          <View style={styles.modalContainer}>
-            
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Game Entry Fee</Text>
-              <TouchableOpacity
-                style={styles.logoutButton}
-                onPress={() => setShowLogoutConfirm(true)}
-              >
-                <Text style={styles.logoutButtonText}>Logout</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Body */}
-            <View style={styles.body}>
-              <View style={styles.priceContainer}>
-                <Text style={styles.priceSymbol}>₹</Text>
-                <Text style={styles.priceAmount}>500</Text>
-              </View>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalContainer}>
               
-              <Text style={styles.title}>Join the Game Room</Text>
-              <Text style={styles.subtitle}>
-                Complete your entry fee payment to unlock game access and receive bonus tokens.
-              </Text>
-
-              {/* Bonus Info */}
-              <View style={styles.bonusContainer}>
-                <Text style={styles.bonusText}>
-                  Bonus: Get 200 tokens instantly after payment
-                </Text>
+              {/* Header */}
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>🎮 Game Entry - ₹500</Text>
+                <TouchableOpacity
+                  style={styles.logoutButton}
+                  onPress={() => setShowLogoutConfirm(true)}
+                >
+                  <Text style={styles.logoutButtonText}>Logout</Text>
+                </TouchableOpacity>
               </View>
 
-              {/* Status Display */}
-              {status ? (
-                <View style={[
-                  styles.statusContainer,
-                  status.includes('Error') || status.includes('failed') ? styles.errorContainer : {}
-                ]}>
-                  <Text style={[
-                    styles.statusText,
-                    status.includes('Error') || status.includes('failed') ? styles.errorText : {}
-                  ]}>
-                    {status}
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* Payment Button */}
-              {!paymentSuccess ? (
-                <TouchableOpacity
-                  style={[styles.paymentButton, loading && styles.disabledButton]}
-                  onPress={startPayment}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <View style={styles.loadingContainer}>
-                      <ActivityIndicator size="small" color="#ffffff" />
-                      <Text style={styles.buttonText}>Processing...</Text>
+              {/* Body */}
+              <View style={styles.body}>
+                {entryFeeStatus === 'pending' ? (
+                  // Pending Verification Status
+                  <>
+                    <View style={styles.pendingContainer}>
+                      <ActivityIndicator size="large" color="#ffc107" style={styles.pendingSpinner} />
+                      <Text style={styles.pendingTitle}>⏳ Payment Under Verification</Text>
+                      <Text style={styles.pendingText}>
+                        Your payment is currently under verification by our admin team. This process typically takes between 4 to 24 hours. Please try logging in again after some time.
+                      </Text>
                     </View>
-                  ) : (
-                    <Text style={styles.buttonText}>Pay ₹500</Text>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.successButton}
-                  onPress={() => {
-                    setPaymentSuccess(true);
-                    if (onContinue) {
-                      onContinue(); // Call the parent's onContinue function to hide popup
-                    }
-                  }}
-                >
-                  <Text style={styles.buttonText}>Continue To Dashboard</Text>
-                </TouchableOpacity>
-              )}
+
+                    {verificationStatus ? (
+                      <View style={styles.warningContainer}>
+                        <Text style={styles.warningText}>{verificationStatus}</Text>
+                      </View>
+                    ) : null}
+
+                    <TouchableOpacity
+                      style={styles.refreshButton}
+                      onPress={checkEntryFeeStatus}
+                    >
+                      <Text style={styles.buttonText}>🔄 Refresh Status</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  // Unpaid Status - Show Payment Flow
+                  <>
+                    <Text style={styles.title}>Join the Game Room</Text>
+                    <Text style={styles.subtitle}>
+                      Unlock your access to play and compete. Entry fee is ₹500.
+                    </Text>
+
+                    {/* Bonus Info */}
+                    <View style={styles.bonusContainer}>
+                      <Text style={styles.bonusText}>
+                        🎁 <Text style={styles.bonusTextBold}>Bonus:</Text> Unlock 200 tokens instantly upon completing the entry fee!
+                      </Text>
+                    </View>
+
+                    {/* Payment Status */}
+                    {paymentStatus ? (
+                      <View style={styles.infoContainer}>
+                        <Text style={styles.infoText}>ℹ️ {paymentStatus}</Text>
+                      </View>
+                    ) : null}
+
+                    {!showOrderIdInput ? (
+                      <TouchableOpacity
+                        style={styles.paymentButton}
+                        onPress={handlePayNow}
+                        disabled={loading}
+                      >
+                        <Text style={styles.buttonText}>💳 Pay ₹500 Now</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.orderIdSection}>
+                        <View style={styles.warningContainer}>
+                          <Text style={styles.warningText}>
+                            <Text style={styles.warningTextBold}>⚠️ Important:</Text> After completing payment on Razorpay, copy the <Text style={styles.warningTextBold}>Order ID</Text> and paste it below.
+                          </Text>
+                        </View>
+
+                        <Text style={styles.inputLabel}>
+                          Enter Order ID <Text style={styles.required}>*</Text>
+                        </Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="e.g., order_abc123xyz"
+                          value={orderId}
+                          onChangeText={setOrderId}
+                          editable={!isVerifying}
+                          autoCapitalize="none"
+                        />
+
+                        {verificationStatus ? (
+                          <View style={[
+                            styles.statusContainer,
+                            verificationStatus.includes('✅') ? styles.successContainer : styles.errorContainer
+                          ]}>
+                            <Text style={[
+                              styles.statusText,
+                              verificationStatus.includes('✅') ? styles.successText : styles.errorText
+                            ]}>
+                              {verificationStatus}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        <TouchableOpacity
+                          style={[styles.submitButton, (isVerifying || !orderId.trim()) && styles.disabledButton]}
+                          onPress={handleSubmitOrderId}
+                          disabled={isVerifying || !orderId.trim()}
+                        >
+                          {isVerifying ? (
+                            <View style={styles.loadingContainer}>
+                              <ActivityIndicator size="small" color="#ffffff" />
+                              <Text style={styles.buttonText}>Submitting...</Text>
+                            </View>
+                          ) : (
+                            <Text style={styles.buttonText}>✅ Submit Order ID</Text>
+                          )}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.backButton}
+                          onPress={() => {
+                            setShowOrderIdInput(false);
+                            setOrderId('');
+                            setVerificationStatus('');
+                            setPaymentStatus('');
+                          }}
+                        >
+                          <Text style={styles.backButtonText}>← Back to Payment</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
 
               {/* Footer */}
-              <Text style={styles.footerText}>
-                Secure payment powered by Cashfree
-              </Text>
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>
+                  🔐 Secure Payment by <Text style={styles.footerTextBold}>Razorpay</Text>
+                </Text>
+              </View>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -368,10 +393,18 @@ export default function EntryFees({ navigation, onContinue }) {
       >
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmContainer}>
-            <Text style={styles.confirmTitle}>Logout Confirmation</Text>
-            <Text style={styles.confirmText}>
-              Are you sure you want to logout? You'll need to login again to access the game.
-            </Text>
+            <View style={styles.confirmHeader}>
+              <Text style={styles.confirmHeaderText}>🚪 Logout Confirmation</Text>
+            </View>
+            
+            <View style={styles.confirmBody}>
+              <Text style={styles.confirmText}>
+                Are you sure you want to logout?
+              </Text>
+              <Text style={styles.confirmSubText}>
+                You'll need to login again to access the game.
+              </Text>
+            </View>
             
             <View style={styles.confirmButtons}>
               <TouchableOpacity
@@ -384,7 +417,7 @@ export default function EntryFees({ navigation, onContinue }) {
                 style={styles.confirmButton}
                 onPress={handleLogout}
               >
-                <Text style={styles.confirmButtonText}>Logout</Text>
+                <Text style={styles.confirmButtonText}>Yes, Logout</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -397,20 +430,25 @@ export default function EntryFees({ navigation, onContinue }) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 20,
   },
   modalContainer: {
-    width: width * 0.85,
-    maxWidth: 400,
+    width: width * 0.9,
+    maxWidth: 450,
     backgroundColor: '#ffffff',
-    borderRadius: 12,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 5,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -419,8 +457,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#007bff',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
   },
   headerTitle: {
     fontSize: 18,
@@ -440,91 +476,129 @@ const styles = StyleSheet.create({
   },
   body: {
     padding: 24,
-    alignItems: 'center',
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  priceSymbol: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#007bff',
-  },
-  priceAmount: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#007bff',
-    marginLeft: 4,
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#333',
+    color: '#007bff',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
     lineHeight: 22,
   },
   bonusContainer: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#e6f2ff',
     borderWidth: 1,
-    borderColor: '#dee2e6',
+    borderColor: '#b8daff',
     borderRadius: 8,
     padding: 12,
-    marginBottom: 20,
-    width: '100%',
+    marginBottom: 16,
   },
   bonusText: {
     fontSize: 14,
-    color: '#495057',
+    color: '#004085',
     textAlign: 'center',
-    fontWeight: '500',
   },
-  statusContainer: {
-    backgroundColor: '#e7f3ff',
+  bonusTextBold: {
+    fontWeight: '600',
+  },
+  infoContainer: {
+    backgroundColor: '#f5faff',
+    borderLeftWidth: 4,
+    borderLeftColor: '#007bff',
     borderRadius: 6,
     padding: 12,
-    marginBottom: 20,
-    width: '100%',
+    marginBottom: 16,
   },
-  statusText: {
+  infoText: {
     fontSize: 14,
-    color: '#0066cc',
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  errorContainer: {
-    backgroundColor: '#ffe6e6',
-    borderColor: '#ff9999',
-    borderWidth: 1,
-  },
-  errorText: {
-    color: '#cc0000',
+    color: '#003366',
   },
   paymentButton: {
     backgroundColor: '#007bff',
-    borderRadius: 8,
+    borderRadius: 10,
     paddingVertical: 14,
-    paddingHorizontal: 24,
-    width: '100%',
     alignItems: 'center',
+    marginTop: 8,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginLeft: 8,
+  },
+  orderIdSection: {
+    marginTop: 16,
+  },
+  warningContainer: {
+    backgroundColor: '#fff3cd',
+    borderWidth: 1,
+    borderColor: '#ffc107',
+    borderRadius: 8,
+    padding: 12,
     marginBottom: 16,
   },
-  successButton: {
-    backgroundColor: '#28a745',
+  warningText: {
+    fontSize: 13,
+    color: '#856404',
+  },
+  warningTextBold: {
+    fontWeight: '600',
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  required: {
+    color: '#dc3545',
+  },
+  input: {
+    borderWidth: 2,
+    borderColor: '#007bff',
     borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    width: '100%',
-    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    fontSize: 15,
     marginBottom: 16,
+    backgroundColor: '#f8f9fa',
+  },
+  statusContainer: {
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 16,
+  },
+  successContainer: {
+    backgroundColor: '#d4edda',
+    borderColor: '#c3e6cb',
+    borderWidth: 1,
+  },
+  errorContainer: {
+    backgroundColor: '#f8d7da',
+    borderColor: '#f5c6cb',
+    borderWidth: 1,
+  },
+  statusText: {
+    fontSize: 14,
+  },
+  successText: {
+    color: '#155724',
+  },
+  errorText: {
+    color: '#721c24',
+  },
+  submitButton: {
+    backgroundColor: '#28a745',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 12,
   },
   disabledButton: {
     opacity: 0.6,
@@ -533,58 +607,132 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginLeft: 8,
+  backButton: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  backButtonText: {
+    fontSize: 14,
+    color: '#007bff',
+  },
+  pendingContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  pendingSpinner: {
+    marginBottom: 16,
+  },
+  pendingTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#ffc107',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  pendingText: {
+    fontSize: 15,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  refreshButton: {
+    backgroundColor: '#6c757d',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  footer: {
+    backgroundColor: '#f1f9ff',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#dee2e6',
+    alignItems: 'center',
   },
   footerText: {
-    fontSize: 12,
-    color: '#6c757d',
-    textAlign: 'center',
+    fontSize: 13,
+    color: '#007bff',
+  },
+  footerTextBold: {
+    fontWeight: '600',
+  },
+  // Checking/Paid Status Styles
+  checkingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkingContainer: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  checkingText: {
+    fontSize: 18,
+    color: '#ffffff',
+    marginTop: 16,
+  },
+  successIcon: {
+    fontSize: 60,
+    color: '#28a745',
   },
   // Logout Confirmation Styles
   confirmOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   confirmContainer: {
     width: width * 0.8,
-    maxWidth: 300,
+    maxWidth: 320,
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+    overflow: 'hidden',
   },
-  confirmTitle: {
-    fontSize: 18,
+  confirmHeader: {
+    backgroundColor: '#dc3545',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  confirmHeaderText: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#ffffff',
     textAlign: 'center',
-    marginBottom: 12,
+  },
+  confirmBody: {
+    padding: 20,
+    alignItems: 'center',
   },
   confirmText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 15,
+    color: '#495057',
+    marginBottom: 8,
     textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 20,
+  },
+  confirmSubText: {
+    fontSize: 13,
+    color: '#6c757d',
+    textAlign: 'center',
   },
   confirmButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#dee2e6',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    justifyContent: 'center',
   },
   cancelButton: {
     flex: 1,
     backgroundColor: '#6c757d',
-    borderRadius: 6,
+    borderRadius: 8,
     paddingVertical: 10,
     marginRight: 8,
     alignItems: 'center',
@@ -597,7 +745,7 @@ const styles = StyleSheet.create({
   confirmButton: {
     flex: 1,
     backgroundColor: '#dc3545',
-    borderRadius: 6,
+    borderRadius: 8,
     paddingVertical: 10,
     marginLeft: 8,
     alignItems: 'center',

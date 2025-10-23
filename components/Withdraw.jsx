@@ -24,6 +24,8 @@ const Withdraw = () => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [netAmount, setNetAmount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [canWithdraw, setCanWithdraw] = useState(false);
+  const [withdrawalMessage, setWithdrawalMessage] = useState("");
 
   const navigation = useNavigation();
 
@@ -61,6 +63,60 @@ const Withdraw = () => {
     return () => backHandler.remove();
   }, [navigation, submitting]);
 
+  const checkWithdrawalEligibility = (userDataObj) => {
+    const currentDate = new Date();
+    const currentDay = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const currentTimestamp = currentDate.getTime();
+
+    // Check if today is Sunday
+    const isSunday = currentDay === 0;
+
+    // Check for recent wins within 48 hours
+    let hasRecentWin = false;
+    let latestWinTime = null;
+
+    if (userDataObj.game1 && userDataObj.game1.wins) {
+      const wins = userDataObj.game1.wins;
+      const winsArray = Object.values(wins);
+
+      // Find the most recent win
+      winsArray.forEach((win) => {
+        if (win.timestamp) {
+          const winTime = win.timestamp;
+          const timeDiff = currentTimestamp - winTime;
+          const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+          if (hoursDiff <= 48) {
+            hasRecentWin = true;
+            if (!latestWinTime || winTime > latestWinTime) {
+              latestWinTime = winTime;
+            }
+          }
+        }
+      });
+    }
+
+    // Determine eligibility and message
+    if (isSunday) {
+      setCanWithdraw(true);
+      setWithdrawalMessage("✅ Today is Sunday! You can withdraw your tokens.");
+    } else if (hasRecentWin && latestWinTime) {
+      setCanWithdraw(true);
+      const hoursLeft = 48 - ((currentTimestamp - latestWinTime) / (1000 * 60 * 60));
+      const hoursLeftRounded = Math.ceil(hoursLeft);
+      setWithdrawalMessage(
+        `✅ Congratulations on your recent win! You have ${hoursLeftRounded} hours left to withdraw.`
+      );
+    } else {
+      setCanWithdraw(false);
+      // Calculate days until next Sunday
+      const daysUntilSunday = (7 - currentDay) % 7 || 7;
+      setWithdrawalMessage(
+        `⏰ Withdrawals are only allowed on Sundays or within 48 hours of a win. Next Sunday is in ${daysUntilSunday} day${daysUntilSunday > 1 ? 's' : ''}.`
+      );
+    }
+  };
+
   const showToast = (type, title, message = "") => {
     if (type === "error") {
       Alert.alert(title, message, [{ text: "OK" }]);
@@ -81,6 +137,9 @@ const Withdraw = () => {
       if (response.data.success) {
         setUserData(response.data.userData);
         setTokens(response.data.tokens);
+
+        // Check withdrawal eligibility
+        checkWithdrawalEligibility(response.data.userData);
 
         if (response.data.userData.bankingDetails) {
           const details = Object.values(response.data.userData.bankingDetails);
@@ -113,6 +172,11 @@ const Withdraw = () => {
   }, [withdrawAmount]);
 
   const handleWithdraw = async () => {
+    if (!canWithdraw) {
+      showToast("error", "Withdrawals are not allowed at this time. Please check the withdrawal schedule.");
+      return;
+    }
+
     if (!withdrawAmount || parseInt(withdrawAmount) <= 0) {
       showToast("warning", "Please enter a valid amount");
       return;
@@ -223,6 +287,28 @@ const Withdraw = () => {
           <Text style={styles.balanceAmount}>{tokens.toLocaleString()} tokens</Text>
         </View>
 
+        {/* Withdrawal Eligibility Notice */}
+        <View style={[
+          styles.eligibilityNotice,
+          canWithdraw ? styles.eligibilityNoticeSuccess : styles.eligibilityNoticeError
+        ]}>
+          <Text style={styles.eligibilityIcon}>{canWithdraw ? '✅' : '⏰'}</Text>
+          <View style={styles.eligibilityContent}>
+            <Text style={[
+              styles.eligibilityTitle,
+              canWithdraw ? styles.eligibilityTitleSuccess : styles.eligibilityTitleError
+            ]}>
+              {canWithdraw ? 'Withdrawal Available' : 'Withdrawal Restricted'}
+            </Text>
+            <Text style={[
+              styles.eligibilityMessage,
+              canWithdraw ? styles.eligibilityMessageSuccess : styles.eligibilityMessageError
+            ]}>
+              {withdrawalMessage}
+            </Text>
+          </View>
+        </View>
+
         {bankingDetails.length === 0 ? (
           <View style={styles.noBankDetails}>
             <View style={styles.warningIconContainer}>
@@ -259,10 +345,10 @@ const Withdraw = () => {
                       style={[
                         styles.paymentMethod,
                         selectedOption === value && styles.selectedPaymentMethod,
-                        !isVerified && styles.disabledPaymentMethod,
+                        (!isVerified || !canWithdraw) && styles.disabledPaymentMethod,
                       ]}
-                      onPress={isVerified ? () => setSelectedOption(value) : undefined}
-                      disabled={!isVerified}
+                      onPress={(isVerified && canWithdraw) ? () => setSelectedOption(value) : undefined}
+                      disabled={!isVerified || !canWithdraw}
                     >
                       <View style={styles.paymentMethodContent}>
                         <View style={styles.radioContainer}>
@@ -334,13 +420,13 @@ const Withdraw = () => {
                 <TextInput
                   style={[
                     styles.amountInput,
-                    !hasVerified && styles.disabledInput,
+                    (!hasVerified || !canWithdraw) && styles.disabledInput,
                   ]}
                   placeholder="Enter tokens to withdraw"
                   value={withdrawAmount}
                   onChangeText={setWithdrawAmount}
                   keyboardType="numeric"
-                  editable={hasVerified}
+                  editable={hasVerified && canWithdraw}
                   placeholderTextColor="#9ca3af"
                 />
                 <Text style={styles.amountSuffix}>tokens</Text>
@@ -377,11 +463,11 @@ const Withdraw = () => {
             <TouchableOpacity
               style={[
                 styles.withdrawButton,
-                (!hasVerified || submitting || !withdrawAmount) &&
+                (!hasVerified || !canWithdraw || submitting || !withdrawAmount) &&
                   styles.disabledWithdrawButton,
               ]}
               onPress={handleWithdraw}
-              disabled={!hasVerified || submitting || !withdrawAmount}
+              disabled={!hasVerified || !canWithdraw || submitting || !withdrawAmount}
             >
               {submitting ? (
                 <View style={styles.submittingContainer}>
@@ -401,8 +487,10 @@ const Withdraw = () => {
               <View style={styles.infoContent}>
                 <Text style={styles.infoTitle}>Important Information</Text>
                 <Text style={styles.infoText}>
-                  30% tax is automatically deducted from all withdrawals. Only verified
-                  payment methods can be used for withdrawals.
+                  • Withdrawals are available only on Sundays{'\n'}
+                  • Winners can withdraw within 48 hours of their win{'\n'}
+                  • 30% tax is automatically deducted from all withdrawals{'\n'}
+                  • Only verified payment methods can be used
                 </Text>
               </View>
             </View>
@@ -478,6 +566,51 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     color: "#1e293b",
+  },
+  eligibilityNotice: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 2,
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  eligibilityNoticeSuccess: {
+    backgroundColor: "#f0fdf4",
+    borderColor: "#10b981",
+  },
+  eligibilityNoticeError: {
+    backgroundColor: "#fef2f2",
+    borderColor: "#ef4444",
+  },
+  eligibilityIcon: {
+    fontSize: 24,
+    marginRight: 12,
+    marginTop: 2,
+  },
+  eligibilityContent: {
+    flex: 1,
+  },
+  eligibilityTitle: {
+    fontWeight: "600",
+    fontSize: 14,
+    marginBottom: 6,
+  },
+  eligibilityTitleSuccess: {
+    color: "#065f46",
+  },
+  eligibilityTitleError: {
+    color: "#991b1b",
+  },
+  eligibilityMessage: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  eligibilityMessageSuccess: {
+    color: "#065f46",
+  },
+  eligibilityMessageError: {
+    color: "#991b1b",
   },
   noBankDetails: {
     alignItems: "center",
@@ -721,7 +854,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#92400e",
     fontSize: 14,
-    marginBottom: 5,
+    marginBottom: 8,
   },
   infoText: {
     color: "#92400e",
