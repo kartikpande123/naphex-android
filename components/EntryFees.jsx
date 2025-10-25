@@ -10,25 +10,34 @@ import {
   StyleSheet,
   BackHandler,
   TextInput,
-  Linking,
-  ScrollView
+  ScrollView,
+  Image,
+  Clipboard
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { launchImageLibrary } from 'react-native-image-picker';
 import API_BASE_URL from './ApiConfig';
 
 const { width } = Dimensions.get('window');
-const RAZORPAY_LINK = "https://razorpay.me/@mohammedadilbetageri?amount=zgioswZa9n4qt5x9yD7i%2BQ%3D%3D";
+
+// Import your QR code image
+const upiQrCode = require('../images/upi_bar.jpg'); // Adjust path as needed
 
 export default function EntryFees({ navigation, onContinue }) {
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState('');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [entryFeeStatus, setEntryFeeStatus] = useState('checking'); // checking, unpaid, pending, paid
-  const [showOrderIdInput, setShowOrderIdInput] = useState(false);
-  const [orderId, setOrderId] = useState('');
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [transactionId, setTransactionId] = useState('');
+  const [paymentScreenshot, setPaymentScreenshot] = useState(null);
+  const [screenshotPreview, setScreenshotPreview] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
+
+  const UPI_ID = "9019842426-2@ybl";
+  const ENTRY_FEE_AMOUNT = 500;
 
   useEffect(() => {
     // Get user data and check entry fee status
@@ -108,85 +117,123 @@ export default function EntryFees({ navigation, onContinue }) {
     });
   };
 
-  const handlePayNow = async () => {
+  const handlePayNow = () => {
+    setShowPaymentForm(true);
+    setPaymentStatus('Scan the QR code or use the UPI ID to make payment');
+  };
+
+  const copyToClipboard = async () => {
+    await Clipboard.setString(UPI_ID);
+    Alert.alert('Success', '✅ UPI ID copied to clipboard!');
+  };
+
+  const pickImage = async () => {
     try {
-      const supported = await Linking.canOpenURL(RAZORPAY_LINK);
-      if (supported) {
-        await Linking.openURL(RAZORPAY_LINK);
-        // Show order ID input after opening payment link
-        setTimeout(() => {
-          setShowOrderIdInput(true);
-          setPaymentStatus('Please complete the payment and copy your Order ID from Razorpay');
-        }, 1000);
-      } else {
-        Alert.alert('Error', 'Cannot open payment link');
-      }
+      const options = {
+        mediaType: 'photo',
+        maxWidth: 1024,
+        maxHeight: 1024,
+        quality: 0.8,
+        includeBase64: false,
+      };
+
+      launchImageLibrary(options, (response) => {
+        if (response.didCancel) {
+          console.log('User cancelled image picker');
+        } else if (response.error) {
+          console.log('ImagePicker Error: ', response.error);
+          Alert.alert('Error', '❌ Error selecting image');
+        } else if (response.assets && response.assets.length > 0) {
+          const asset = response.assets[0];
+          
+          // Check file size (rough estimation)
+          if (asset.fileSize > 5 * 1024 * 1024) {
+            Alert.alert('Error', '❌ File size should be less than 5MB');
+            return;
+          }
+
+          setPaymentScreenshot(asset);
+          setScreenshotPreview(asset.uri);
+        }
+      });
     } catch (error) {
-      console.error('Error opening Razorpay link:', error);
-      Alert.alert('Error', 'Failed to open payment link');
+      console.error('Error picking image:', error);
+      Alert.alert('Error', '❌ Error selecting image');
     }
   };
 
-  const handleSubmitOrderId = async () => {
-    if (!orderId.trim()) {
-      Alert.alert('Error', 'Please enter the Order ID');
+  const handleSubmitPayment = async () => {
+    if (!paymentScreenshot) {
+      Alert.alert('Error', '❌ Please upload payment screenshot');
       return;
     }
 
     if (!phone) {
-      Alert.alert('Error', 'Phone number not found');
+      Alert.alert('Error', '❌ Phone number not found');
       return;
     }
 
     setIsVerifying(true);
-    setVerificationStatus('Submitting order ID for verification...');
+    setVerificationStatus('Submitting payment details for verification...');
 
     try {
-      console.log('Submitting order ID:', { phoneNo: phone, orderId: orderId.trim(), amount: 500 });
+      // Create FormData
+      const formData = new FormData();
+      formData.append('phoneNo', phone);
+      formData.append('transactionId', transactionId.trim() || 'N/A');
+      formData.append('amount', ENTRY_FEE_AMOUNT.toString());
       
-      const res = await fetch(`${API_BASE_URL}/submit-order-id`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          phoneNo: phone, 
-          orderId: orderId.trim(),
-          amount: 500
-        })
+      // Append the image file
+      formData.append('screenshot', {
+        uri: paymentScreenshot.uri,
+        type: paymentScreenshot.type || 'image/jpeg',
+        name: paymentScreenshot.fileName || `entry_fee_payment_${Date.now()}.jpg`,
       });
 
-      console.log('Response status:', res.status);
-      
-      // Check if response is ok
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Server error response:', errorText);
-        throw new Error(`Server error: ${res.status}. ${errorText}`);
-      }
+      const res = await fetch(`${API_BASE_URL}/submit-order-id`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
       const data = await res.json();
-      console.log('Response data:', data);
       
       if (data.success) {
         setEntryFeeStatus('pending');
-        setVerificationStatus('✅ Order ID submitted successfully! Your payment is under verification. Admin will verify your payment soon.');
-        setShowOrderIdInput(false);
-        setOrderId('');
+        setVerificationStatus('✅ Payment details submitted successfully! Your payment is under verification. Admin will verify your payment soon.');
+        setShowPaymentForm(false);
+        setTransactionId('');
+        setPaymentScreenshot(null);
+        setScreenshotPreview('');
+        setPaymentStatus('');
+        
         Alert.alert(
           'Success',
-          'Order ID submitted successfully! Your payment is under verification. This typically takes 4-24 hours.',
+          'Payment details submitted successfully! Your payment is under verification. This typically takes 4-24 hours.',
           [{ text: 'OK' }]
         );
       } else {
-        throw new Error(data.error || data.message || 'Failed to submit order ID');
+        throw new Error(data.error || 'Failed to submit payment details');
       }
     } catch (err) {
-      console.error('Error submitting order ID:', err);
-      const errorMessage = err.message || 'Failed to submit order ID. Please try again.';
+      console.error('Error submitting payment:', err);
+      const errorMessage = err.message || 'Failed to submit payment details. Please try again.';
       setVerificationStatus(`❌ ${errorMessage}`);
       Alert.alert('Error', errorMessage);
     } finally {
       setIsVerifying(false);
     }
+  };
+
+  const clearPaymentForm = () => {
+    setShowPaymentForm(false);
+    setTransactionId('');
+    setPaymentScreenshot(null);
+    setScreenshotPreview('');
+    setVerificationStatus('');
+    setPaymentStatus('');
   };
 
   // Checking Status Screen
@@ -277,8 +324,8 @@ export default function EntryFees({ navigation, onContinue }) {
                       <Text style={styles.buttonText}>🔄 Refresh Status</Text>
                     </TouchableOpacity>
                   </>
-                ) : (
-                  // Unpaid Status - Show Payment Flow
+                ) : !showPaymentForm ? (
+                  // Unpaid Status - Show Payment Options
                   <>
                     <Text style={styles.title}>Join the Game Room</Text>
                     <Text style={styles.subtitle}>
@@ -299,84 +346,153 @@ export default function EntryFees({ navigation, onContinue }) {
                       </View>
                     ) : null}
 
-                    {!showOrderIdInput ? (
-                      <TouchableOpacity
-                        style={styles.paymentButton}
-                        onPress={handlePayNow}
-                        disabled={loading}
-                      >
-                        <Text style={styles.buttonText}>💳 Pay ₹500 Now</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={styles.orderIdSection}>
-                        <View style={styles.warningContainer}>
-                          <Text style={styles.warningText}>
-                            <Text style={styles.warningTextBold}>⚠️ Important:</Text> After completing payment on Razorpay, copy the <Text style={styles.warningTextBold}>Order ID</Text> and paste it below.
-                          </Text>
-                        </View>
-
-                        <Text style={styles.inputLabel}>
-                          Enter Order ID <Text style={styles.required}>*</Text>
-                        </Text>
-                        <TextInput
-                          style={styles.input}
-                          placeholder="e.g., order_abc123xyz"
-                          value={orderId}
-                          onChangeText={setOrderId}
-                          editable={!isVerifying}
-                          autoCapitalize="none"
+                    <TouchableOpacity
+                      style={styles.paymentButton}
+                      onPress={handlePayNow}
+                      disabled={loading}
+                    >
+                      <Text style={styles.buttonText}>💳 Pay ₹500 Now</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  // Payment Form Section (QR Code + Screenshot Upload)
+                  <View style={styles.paymentFormSection}>
+                    {/* QR Code Section */}
+                    <View style={styles.qrContainer}>
+                      <Text style={styles.qrTitle}>Scan QR Code to Pay</Text>
+                      <View style={styles.qrImageContainer}>
+                        <Image 
+                          source={upiQrCode} 
+                          style={styles.qrImage}
+                          resizeMode="contain"
                         />
+                      </View>
+                      
+                      <View style={styles.upiContainer}>
+                        <Text style={styles.upiLabel}>Or use UPI ID:</Text>
+                        <View style={styles.upiRow}>
+                          <Text style={styles.upiId}>{UPI_ID}</Text>
+                          <TouchableOpacity
+                            style={styles.copyButton}
+                            onPress={copyToClipboard}
+                          >
+                            <Text style={styles.copyButtonText}>📋 Copy</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
 
-                        {verificationStatus ? (
-                          <View style={[
-                            styles.statusContainer,
-                            verificationStatus.includes('✅') ? styles.successContainer : styles.errorContainer
-                          ]}>
-                            <Text style={[
-                              styles.statusText,
-                              verificationStatus.includes('✅') ? styles.successText : styles.errorText
-                            ]}>
-                              {verificationStatus}
-                            </Text>
-                          </View>
-                        ) : null}
+                    {/* Warning Message */}
+                    <View style={styles.warningContainer}>
+                      <Text style={styles.warningTitle}>⚠️ Important:</Text>
+                      <Text style={styles.warningText}>
+                        After completing payment, upload the screenshot below and optionally provide transaction ID.
+                      </Text>
+                    </View>
 
-                        <TouchableOpacity
-                          style={[styles.submitButton, (isVerifying || !orderId.trim()) && styles.disabledButton]}
-                          onPress={handleSubmitOrderId}
-                          disabled={isVerifying || !orderId.trim()}
-                        >
-                          {isVerifying ? (
-                            <View style={styles.loadingContainer}>
-                              <ActivityIndicator size="small" color="#ffffff" />
-                              <Text style={styles.buttonText}>Submitting...</Text>
-                            </View>
-                          ) : (
-                            <Text style={styles.buttonText}>✅ Submit Order ID</Text>
-                          )}
-                        </TouchableOpacity>
+                    {/* Transaction ID - Optional */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>
+                        Transaction ID <Text style={styles.optionalText}>(Optional)</Text>
+                      </Text>
+                      <TextInput
+                        style={styles.input}
+                        value={transactionId}
+                        onChangeText={setTransactionId}
+                        placeholder="e.g., TXN123456789"
+                        editable={!isVerifying}
+                        placeholderTextColor="#9ca3af"
+                      />
+                    </View>
 
-                        <TouchableOpacity
-                          style={styles.backButton}
-                          onPress={() => {
-                            setShowOrderIdInput(false);
-                            setOrderId('');
-                            setVerificationStatus('');
-                            setPaymentStatus('');
-                          }}
-                        >
-                          <Text style={styles.backButtonText}>← Back to Payment</Text>
-                        </TouchableOpacity>
+                    {/* Payment Screenshot - Required */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>
+                        Payment Screenshot <Text style={styles.required}>*</Text>
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.uploadButton}
+                        onPress={pickImage}
+                        disabled={isVerifying}
+                      >
+                        <Text style={styles.uploadButtonText}>
+                          📸 Choose Screenshot
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={styles.uploadNote}>Max size: 5MB | Formats: JPG, PNG, JPEG</Text>
+                    </View>
+
+                    {/* Screenshot Preview */}
+                    {screenshotPreview && (
+                      <View style={styles.previewContainer}>
+                        <Image 
+                          source={{ uri: screenshotPreview }} 
+                          style={styles.previewImage}
+                          resizeMode="contain"
+                        />
+                        <Text style={styles.previewText}>✅ Screenshot uploaded</Text>
                       </View>
                     )}
-                  </>
+
+                    {/* Order Summary */}
+                    <View style={styles.summaryContainer}>
+                      <Text style={styles.summaryTitle}>Order Summary</Text>
+                      <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Entry Fee:</Text>
+                        <Text style={styles.summaryValue}>₹{ENTRY_FEE_AMOUNT}</Text>
+                      </View>
+                      <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Bonus Tokens:</Text>
+                        <Text style={styles.summaryValue}>200 tokens</Text>
+                      </View>
+                    </View>
+
+                    {/* Status Display */}
+                    {verificationStatus ? (
+                      <View style={[
+                        styles.statusContainer,
+                        verificationStatus.includes('✅') ? styles.successContainer : styles.errorContainer
+                      ]}>
+                        <Text style={[
+                          styles.statusText,
+                          verificationStatus.includes('✅') ? styles.successText : styles.errorText
+                        ]}>
+                          {verificationStatus}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {/* Submit Button */}
+                    <TouchableOpacity
+                      style={[styles.submitButton, (!paymentScreenshot || isVerifying) && styles.disabledButton]}
+                      onPress={handleSubmitPayment}
+                      disabled={!paymentScreenshot || isVerifying}
+                    >
+                      {isVerifying ? (
+                        <View style={styles.loadingContainer}>
+                          <ActivityIndicator size="small" color="#ffffff" />
+                          <Text style={styles.buttonText}>Submitting...</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.buttonText}>✅ Submit Payment Details</Text>
+                      )}
+                    </TouchableOpacity>
+
+                    {/* Back Button */}
+                    <TouchableOpacity
+                      style={styles.backButton}
+                      onPress={clearPaymentForm}
+                    >
+                      <Text style={styles.backButtonText}>← Back to Payment</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
 
               {/* Footer */}
               <View style={styles.footer}>
                 <Text style={styles.footerText}>
-                  🔐 Secure Payment by <Text style={styles.footerTextBold}>Razorpay</Text>
+                  🔐 Secure UPI Payment
                 </Text>
               </View>
             </View>
@@ -532,8 +648,67 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginLeft: 8,
   },
-  orderIdSection: {
-    marginTop: 16,
+  paymentFormSection: {
+    marginTop: 8,
+  },
+  qrContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  qrTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e40af',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  qrImageContainer: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  qrImage: {
+    width: 250,
+    height: 250,
+    borderWidth: 3,
+    borderColor: '#007bff',
+    borderRadius: 12,
+  },
+  upiContainer: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 12,
+    width: '100%',
+  },
+  upiLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  upiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  upiId: {
+    fontSize: 16,
+    color: '#007bff',
+    fontWeight: '600',
+  },
+  copyButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#007bff',
+    borderRadius: 4,
+  },
+  copyButtonText: {
+    fontSize: 12,
+    color: '#007bff',
   },
   warningContainer: {
     backgroundColor: '#fff3cd',
@@ -543,12 +718,19 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 16,
   },
-  warningText: {
+  warningTitle: {
     fontSize: 13,
+    fontWeight: '700',
     color: '#856404',
+    marginBottom: 4,
   },
-  warningTextBold: {
-    fontWeight: '600',
+  warningText: {
+    fontSize: 12,
+    color: '#856404',
+    lineHeight: 18,
+  },
+  inputContainer: {
+    marginBottom: 16,
   },
   inputLabel: {
     fontSize: 14,
@@ -559,6 +741,10 @@ const styles = StyleSheet.create({
   required: {
     color: '#dc3545',
   },
+  optionalText: {
+    color: '#6b7280',
+    fontSize: 13,
+  },
   input: {
     borderWidth: 2,
     borderColor: '#007bff',
@@ -566,8 +752,68 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     fontSize: 15,
-    marginBottom: 16,
     backgroundColor: '#f8f9fa',
+  },
+  uploadButton: {
+    backgroundColor: '#007bff',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  uploadButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  uploadNote: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  previewContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  previewImage: {
+    width: 200,
+    height: 200,
+    borderWidth: 2,
+    borderColor: '#28a745',
+    borderRadius: 8,
+  },
+  previewText: {
+    color: '#28a745',
+    fontSize: 12,
+    marginTop: 8,
+  },
+  summaryContainer: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#065f46',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    color: '#065f46',
+    fontWeight: '600',
+  },
+  summaryValue: {
+    fontSize: 13,
+    color: '#065f46',
+    fontWeight: '700',
   },
   statusContainer: {
     borderRadius: 6,
@@ -652,9 +898,6 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 13,
     color: '#007bff',
-  },
-  footerTextBold: {
-    fontWeight: '600',
   },
   // Checking/Paid Status Styles
   checkingOverlay: {

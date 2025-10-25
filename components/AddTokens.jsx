@@ -10,13 +10,18 @@ import {
   TextInput,
   ScrollView,
   SafeAreaView,
-  Linking,
-  Modal
+  Image,
+  Clipboard,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { launchImageLibrary } from 'react-native-image-picker';
 import API_BASE_URL from './ApiConfig';
 
 const { width, height } = Dimensions.get('window');
+
+// Import your QR code image - make sure to add this image to your React Native assets
+const upiQrCode = require('../images/upi_bar.jpg'); // Adjust path as needed
 
 const AddTokens = ({ navigation, onTokensUpdated }) => {
   const [loading, setLoading] = useState(false);
@@ -24,18 +29,17 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
   const [phone, setPhone] = useState('');
   const [tokenAmount, setTokenAmount] = useState('');
   const [userTokens, setUserTokens] = useState(0);
-  const [showPaymentIdInput, setShowPaymentIdInput] = useState(false);
-  const [paymentId, setPaymentId] = useState('');
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [transactionId, setTransactionId] = useState('');
+  const [paymentScreenshot, setPaymentScreenshot] = useState(null);
+  const [screenshotPreview, setScreenshotPreview] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toasts, setToasts] = useState([]);
 
   // Token price (₹1 per token)
   const TOKEN_PRICE = 1;
-  const GST_RATE = 0.28; // 28% GST
-  const PAYMENT_GATEWAY_FEE = 0.025; // 2.5% Razorpay fee
-
-  // Payment link - Razorpay payment link
-  const RAZORPAY_PAYMENT_LINK = "https://razorpay.me/@mohammedadilbetageri?amount=tEDHZxxCtz0rKFL9kTzhOw%3D%3D";
+  const GST_RATE = 0.28; // 28% GST only
+  const UPI_ID = "9019842426-2@ybl";
 
   // Toast notification function
   const showToast = (message, type = 'success', duration = 5000) => {
@@ -54,13 +58,20 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
   };
 
   useEffect(() => {
-    AsyncStorage.getItem('userData').then(d => {
-      if (d) {
-        const user = JSON.parse(d);
-        setPhone(user.phoneNo || '');
-        setUserTokens(user.tokens || 0);
+    const fetchUserData = async () => {
+      try {
+        const storedUserData = await AsyncStorage.getItem('userData');
+        if (storedUserData) {
+          const user = JSON.parse(storedUserData);
+          setPhone(user.phoneNo || '');
+          setUserTokens(user.tokens || 0);
+        }
+      } catch (err) {
+        console.error('Error fetching user data:', err);
       }
-    });
+    };
+
+    fetchUserData();
   }, []);
 
   const handleTokenAmountChange = (value) => {
@@ -77,20 +88,12 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
     return parseFloat((tokens * GST_RATE).toFixed(2));
   };
 
-  const calculatePaymentGatewayFee = () => {
-    const tokens = parseInt(tokenAmount);
-    if (!tokens) return 0;
-    const amount = tokens * TOKEN_PRICE;
-    return parseFloat((amount * PAYMENT_GATEWAY_FEE).toFixed(2));
-  };
-
   const calculateNetTokens = () => {
     const tokens = parseInt(tokenAmount);
     if (!tokens) return 0;
-    // Net tokens = Total - GST - Gateway Fee
+    // Net tokens = Total - GST (28% only)
     const gst = calculateGST();
-    const gatewayFee = calculatePaymentGatewayFee();
-    return parseFloat((tokens - gst - gatewayFee).toFixed(2));
+    return parseFloat((tokens - gst).toFixed(2));
   };
 
   const calculateTotalAmount = () => {
@@ -114,25 +117,59 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
       return;
     }
 
-    // Open Razorpay payment link
-    Linking.openURL(RAZORPAY_PAYMENT_LINK).catch(err => {
-      console.error('Error opening payment link:', err);
-      showToast("Failed to open payment link", "error");
-    });
-    
-    // Show payment ID input after opening payment link
-    setShowPaymentIdInput(true);
-    setStatus('Please complete the payment and copy your Payment ID from Razorpay');
+    // Show payment form with QR code
+    setShowPaymentForm(true);
+    setStatus('Scan the QR code or use the UPI ID to make payment');
   };
 
-  const handleSubmitPaymentId = async () => {
-    if (!paymentId.trim()) {
-      showToast("Please enter the Payment ID", "error");
+  const copyToClipboard = async () => {
+    await Clipboard.setString(UPI_ID);
+    showToast("✅ UPI ID copied to clipboard!", "success");
+  };
+
+  const pickImage = async () => {
+    try {
+      const options = {
+        mediaType: 'photo',
+        maxWidth: 1024,
+        maxHeight: 1024,
+        quality: 0.8,
+        includeBase64: false,
+      };
+
+      launchImageLibrary(options, (response) => {
+        if (response.didCancel) {
+          console.log('User cancelled image picker');
+        } else if (response.error) {
+          console.log('ImagePicker Error: ', response.error);
+          showToast("❌ Error selecting image", "error");
+        } else if (response.assets && response.assets.length > 0) {
+          const asset = response.assets[0];
+          
+          // Check file size (rough estimation)
+          if (asset.fileSize > 5 * 1024 * 1024) {
+            showToast("❌ File size should be less than 5MB", "error");
+            return;
+          }
+
+          setPaymentScreenshot(asset);
+          setScreenshotPreview(asset.uri);
+        }
+      });
+    } catch (error) {
+      console.error('Error picking image:', error);
+      showToast("❌ Error selecting image", "error");
+    }
+  };
+
+  const handleSubmitPayment = async () => {
+    if (!paymentScreenshot) {
+      showToast("❌ Please upload payment screenshot", "error");
       return;
     }
 
     if (!phone) {
-      showToast("Phone number not found", "error");
+      showToast("❌ Phone number not found", "error");
       return;
     }
 
@@ -146,18 +183,28 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
     setStatus('Submitting token request for verification...');
 
     try {
+      // Create FormData
+      const formData = new FormData();
+      formData.append('phoneNo', phone);
+      formData.append('transactionId', transactionId.trim() || 'N/A');
+      formData.append('requestedTokens', tokens.toString());
+      formData.append('netTokens', calculateNetTokens().toString());
+      formData.append('amountPaid', calculateTotalAmount().toString());
+      formData.append('gstAmount', calculateGST().toString());
+      
+      // Append the image file for react-native-image-picker
+      formData.append('screenshot', {
+        uri: paymentScreenshot.uri,
+        type: paymentScreenshot.type || 'image/jpeg',
+        name: paymentScreenshot.fileName || `payment_screenshot_${Date.now()}.jpg`,
+      });
+
       const res = await fetch(`${API_BASE_URL}/submit-token-request`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          phoneNo: phone, 
-          paymentId: paymentId.trim(),
-          requestedTokens: tokens,
-          netTokens: calculateNetTokens(),
-          amountPaid: calculateTotalAmount(),
-          gstAmount: calculateGST(),
-          gatewayFee: calculatePaymentGatewayFee()
-        })
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       const data = await res.json();
@@ -165,14 +212,17 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
       if (data.success) {
         // Show success toast with detailed info
         showToast(
-          `Token Request Submitted! Your payment is under verification. Admin will add ${calculateNetTokens().toLocaleString()} tokens to your account within 24-48 hours. Payment ID: ${paymentId.trim()}`,
+          `Token Request Submitted Successfully! Admin team will update tokens within 4 to 24 hours. Please check request status in previous requests page.`,
           "success",
           8000
         );
         
-        setShowPaymentIdInput(false);
+        // Clear form and navigate back
+        setShowPaymentForm(false);
         setTokenAmount('');
-        setPaymentId('');
+        setTransactionId('');
+        setPaymentScreenshot(null);
+        setScreenshotPreview('');
         setStatus('');
 
         // Navigate back after short delay
@@ -180,17 +230,25 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
           if (navigation) {
             navigation.goBack();
           }
-        }, 1000);
+        }, 2000);
       } else {
         throw new Error(data.error || 'Failed to submit token request');
       }
     } catch (err) {
-      console.error("Error submitting payment ID:", err);
-      showToast(err.message, "error");
+      console.error("Error submitting payment:", err);
+      showToast(`❌ Error: ${err.message}`, "error");
       setStatus('');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const clearPaymentForm = () => {
+    setShowPaymentForm(false);
+    setTransactionId('');
+    setPaymentScreenshot(null);
+    setScreenshotPreview('');
+    setStatus('');
   };
 
   const handleGoBack = () => {
@@ -247,7 +305,7 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
             </Text>
           </View>
 
-          {!showPaymentIdInput ? (
+          {!showPaymentForm ? (
             <>
               {/* Token Input */}
               <View style={styles.inputContainer}>
@@ -260,6 +318,7 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
                     placeholder="e.g., 100"
                     keyboardType="numeric"
                     editable={!loading}
+                    placeholderTextColor="#9ca3af"
                   />
                   <Text style={styles.inputSuffix}>tokens</Text>
                 </View>
@@ -293,11 +352,6 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
                       <Text style={[styles.breakdownValue, styles.deductionValue]}>-₹{calculateGST().toLocaleString()}</Text>
                     </View>
 
-                    <View style={styles.breakdownRow}>
-                      <Text style={[styles.breakdownLabel, styles.deductionLabel]}>- Gateway Fee (2.5%)</Text>
-                      <Text style={[styles.breakdownValue, styles.deductionValue]}>-₹{calculatePaymentGatewayFee().toLocaleString()}</Text>
-                    </View>
-
                     <View style={styles.breakdownDivider} />
 
                     <View style={styles.breakdownRow}>
@@ -314,9 +368,9 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
                 <Text style={styles.infoText}>
                   • Payment will be verified by admin within 4-24 hours{'\n'}
                   • You will receive tokens after successful verification{'\n'}
-                  • Keep your Payment ID safe for reference{'\n'}
-                  • 28% GST + 2.5% gateway fee will be deducted from recharge amount{'\n'}
-                  • Example: ₹100 recharge = ₹100 - ₹28 (GST) - ₹2.5 (fee) = ~69.5 tokens{'\n'}
+                  • Keep your transaction details safe for reference{'\n'}
+                  • 28% GST will be deducted from recharge amount{'\n'}
+                  • Example: ₹100 recharge = ₹100 - ₹28 (GST) = 72 tokens{'\n'}
                   • No maximum limit - you can purchase any amount of tokens
                 </Text>
               </View>
@@ -325,11 +379,11 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
               {status ? (
                 <View style={[
                   styles.statusContainer,
-                  status.includes('Error') || status.includes('failed') ? styles.errorContainer : {}
+                  status.includes('Error') || status.includes('failed') ? styles.errorContainer : styles.successContainer
                 ]}>
                   <Text style={[
                     styles.statusText,
-                    status.includes('Error') || status.includes('failed') ? styles.errorText : {}
+                    status.includes('Error') || status.includes('failed') ? styles.errorText : styles.successText
                   ]}>
                     {status}
                   </Text>
@@ -354,32 +408,88 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
               </TouchableOpacity>
             </>
           ) : (
-            // Payment ID Input Section
+            // Payment Form Section (QR Code + Screenshot Upload)
             <>
+              {/* QR Code Section */}
+              <View style={styles.qrContainer}>
+                <Text style={styles.qrTitle}>Scan QR Code to Pay</Text>
+                <View style={styles.qrImageContainer}>
+                  <Image 
+                    source={upiQrCode} 
+                    style={styles.qrImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                
+                <View style={styles.upiContainer}>
+                  <Text style={styles.upiLabel}>Or use UPI ID:</Text>
+                  <View style={styles.upiRow}>
+                    <Text style={styles.upiId}>{UPI_ID}</Text>
+                    <TouchableOpacity
+                      style={styles.copyButton}
+                      onPress={copyToClipboard}
+                    >
+                      <Text style={styles.copyButtonText}>📋 Copy</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
               {/* Warning Message */}
               <View style={styles.warningContainer}>
                 <Text style={styles.warningTitle}>⚠️ Important:</Text>
                 <Text style={styles.warningText}>
-                  After completing payment on Razorpay, copy the <Text style={styles.boldText}>Payment ID</Text> and paste it below.
+                  After completing payment, upload the screenshot below and optionally provide transaction ID.
                 </Text>
               </View>
 
-              {/* Payment ID Input */}
+              {/* Transaction ID - Optional */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>
-                  Enter Payment ID <Text style={styles.requiredStar}>*</Text>
+                  Transaction ID <Text style={styles.optionalText}>(Optional)</Text>
                 </Text>
                 <TextInput
                   style={styles.input}
-                  value={paymentId}
-                  onChangeText={setPaymentId}
-                  placeholder="e.g., pay_ABC123xyz"
+                  value={transactionId}
+                  onChangeText={setTransactionId}
+                  placeholder="e.g., TXN123456789"
                   editable={!isSubmitting}
+                  placeholderTextColor="#9ca3af"
                 />
               </View>
 
-              {/* Summary */}
+              {/* Payment Screenshot - Required */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>
+                  Payment Screenshot <Text style={styles.requiredStar}>*</Text>
+                </Text>
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={pickImage}
+                  disabled={isSubmitting}
+                >
+                  <Text style={styles.uploadButtonText}>
+                    📸 Choose Screenshot
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.uploadNote}>Max size: 5MB | Formats: JPG, PNG, JPEG</Text>
+              </View>
+
+              {/* Screenshot Preview */}
+              {screenshotPreview && (
+                <View style={styles.previewContainer}>
+                  <Image 
+                    source={{ uri: screenshotPreview }} 
+                    style={styles.previewImage}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.previewText}>✅ Screenshot uploaded</Text>
+                </View>
+              )}
+
+              {/* Order Summary */}
               <View style={styles.summaryContainer}>
+                <Text style={styles.summaryTitle}>Order Summary</Text>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Requested Tokens:</Text>
                   <Text style={styles.summaryValue}>{parseInt(tokenAmount).toLocaleString()}</Text>
@@ -392,17 +502,21 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
                   <Text style={styles.summaryLabel}>Amount Paid:</Text>
                   <Text style={styles.summaryValue}>₹{calculateTotalAmount().toLocaleString()}</Text>
                 </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>GST (28%):</Text>
+                  <Text style={styles.summaryValue}>₹{calculateGST().toLocaleString()}</Text>
+                </View>
               </View>
 
               {/* Status Display */}
               {status ? (
                 <View style={[
                   styles.statusContainer,
-                  status.includes('Error') || status.includes('failed') ? styles.errorContainer : styles.successContainer
+                  status.includes('❌') ? styles.errorContainer : styles.successContainer
                 ]}>
                   <Text style={[
                     styles.statusText,
-                    status.includes('Error') || status.includes('failed') ? styles.errorText : styles.successText
+                    status.includes('❌') ? styles.errorText : styles.successText
                   ]}>
                     {status}
                   </Text>
@@ -413,10 +527,10 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
               <TouchableOpacity
                 style={[
                   styles.submitButton,
-                  (!paymentId.trim() || isSubmitting) && styles.disabledButton
+                  (!paymentScreenshot || isSubmitting) && styles.disabledButton
                 ]}
-                onPress={handleSubmitPaymentId}
-                disabled={!paymentId.trim() || isSubmitting}
+                onPress={handleSubmitPayment}
+                disabled={!paymentScreenshot || isSubmitting}
               >
                 {isSubmitting ? (
                   <View style={styles.loadingContainer}>
@@ -424,18 +538,14 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
                     <Text style={styles.buttonText}>Submitting...</Text>
                   </View>
                 ) : (
-                  <Text style={styles.buttonText}>✅ Submit Payment ID</Text>
+                  <Text style={styles.buttonText}>✅ Submit Payment Details</Text>
                 )}
               </TouchableOpacity>
 
               {/* Back Button */}
               <TouchableOpacity
                 style={styles.secondaryButton}
-                onPress={() => {
-                  setShowPaymentIdInput(false);
-                  setPaymentId('');
-                  setStatus('');
-                }}
+                onPress={clearPaymentForm}
               >
                 <Text style={styles.secondaryButtonText}>← Back to Token Selection</Text>
               </TouchableOpacity>
@@ -446,7 +556,7 @@ const AddTokens = ({ navigation, onTokensUpdated }) => {
           <View style={styles.securityContainer}>
             <Text style={styles.securityIcon}>🔒</Text>
             <Text style={styles.securityText}>
-              <Text style={styles.securityBold}>Secure Payment</Text> powered by Razorpay
+              <Text style={styles.securityBold}>Secure UPI Payment</Text>
             </Text>
           </View>
         </View>
@@ -579,6 +689,10 @@ const styles = StyleSheet.create({
   requiredStar: {
     color: '#dc2626',
   },
+  optionalText: {
+    color: '#6b7280',
+    fontSize: 13,
+  },
   inputWrapper: {
     position: 'relative',
   },
@@ -690,6 +804,65 @@ const styles = StyleSheet.create({
     color: '#92400e',
     lineHeight: 18,
   },
+  qrContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  qrTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e40af',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  qrImageContainer: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  qrImage: {
+    width: 250,
+    height: 250,
+    borderWidth: 3,
+    borderColor: '#007bff',
+    borderRadius: 12,
+  },
+  upiContainer: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 12,
+    width: '100%',
+  },
+  upiLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  upiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  upiId: {
+    fontSize: 16,
+    color: '#007bff',
+    fontWeight: '600',
+  },
+  copyButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#007bff',
+    borderRadius: 4,
+  },
+  copyButtonText: {
+    fontSize: 12,
+    color: '#007bff',
+  },
   warningContainer: {
     backgroundColor: '#fff3cd',
     borderWidth: 1,
@@ -709,14 +882,51 @@ const styles = StyleSheet.create({
     color: '#856404',
     lineHeight: 18,
   },
-  boldText: {
-    fontWeight: '700',
+  uploadButton: {
+    backgroundColor: '#007bff',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  uploadButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  uploadNote: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  previewContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  previewImage: {
+    width: 200,
+    height: 200,
+    borderWidth: 2,
+    borderColor: '#28a745',
+    borderRadius: 8,
+  },
+  previewText: {
+    color: '#28a745',
+    fontSize: 12,
+    marginTop: 8,
   },
   summaryContainer: {
     backgroundColor: '#f0fdf4',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#065f46',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -734,16 +944,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   statusContainer: {
-    backgroundColor: '#eff6ff',
     borderRadius: 12,
     padding: 14,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#3b82f6',
   },
   statusText: {
     fontSize: 13,
-    color: '#1e40af',
     textAlign: 'center',
     fontWeight: '500',
   },

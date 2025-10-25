@@ -164,7 +164,7 @@ const Withdraw = () => {
   useEffect(() => {
     if (withdrawAmount && parseInt(withdrawAmount) > 0) {
       const amt = parseInt(withdrawAmount);
-      const tax = Math.floor(amt * 0.3);
+      const tax = Math.floor(amt * 0.28); // Updated to 28% (same as React web component)
       setNetAmount(amt - tax);
     } else {
       setNetAmount(0);
@@ -216,7 +216,7 @@ const Withdraw = () => {
         showToast(
           "success", 
           "Withdrawal successful!", 
-          `Requested: ${withdrawAmount}, After Tax (30%): ${netAmount}`
+          `Requested: ${withdrawAmount}, After Tax (28%): ${netAmount}`
         );
         setTokens((prev) => prev - parseInt(withdrawAmount));
         setWithdrawAmount("");
@@ -433,7 +433,7 @@ const Withdraw = () => {
               </View>
             </View>
 
-            {/* Tax Calculation */}
+            {/* Tax Calculation - Updated to 28% */}
             {withdrawAmount && netAmount > 0 && (
               <View style={styles.taxContainer}>
                 <View style={styles.taxRow}>
@@ -444,7 +444,7 @@ const Withdraw = () => {
                     </Text>
                   </View>
                   <View style={styles.taxColumn}>
-                    <Text style={styles.taxLabel}>Tax (30%)</Text>
+                    <Text style={styles.taxLabel}>Tax (28%)</Text>
                     <Text style={styles.taxValueDeducted}>
                       -{(parseInt(withdrawAmount) - netAmount).toLocaleString()}
                     </Text>
@@ -481,7 +481,7 @@ const Withdraw = () => {
               )}
             </TouchableOpacity>
 
-            {/* Info Section */}
+            {/* Info Section - Updated tax info to 28% */}
             <View style={styles.infoContainer}>
               <Text style={styles.infoIcon}>ℹ️</Text>
               <View style={styles.infoContent}>
@@ -489,7 +489,7 @@ const Withdraw = () => {
                 <Text style={styles.infoText}>
                   • Withdrawals are available only on Sundays{'\n'}
                   • Winners can withdraw within 48 hours of their win{'\n'}
-                  • 30% tax is automatically deducted from all withdrawals{'\n'}
+                  • 28% tax is automatically deducted from all withdrawals{'\n'}
                   • Only verified payment methods can be used
                 </Text>
               </View>

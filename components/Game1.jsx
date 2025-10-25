@@ -12,6 +12,7 @@ import {
   Dimensions,
   ActivityIndicator,
   StyleSheet,
+  Linking
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -554,7 +555,8 @@ const OpenCloseGame = () => {
     const { minSelections, maxSelections, orderType } = validationRules;
 
     if (selectedImages.length >= maxSelections) {
-      const modeLabel = choiceModes.find(m => m.key === choiceMode)?.label || choiceMode;
+      const modeLabel =
+        choiceModes.find(m => m.key === choiceMode)?.label || choiceMode;
       showPopup(
         `Maximum ${maxSelections} images for ${modeLabel} mode`,
         'warning',
@@ -932,8 +934,18 @@ const OpenCloseGame = () => {
   const renderSelectedImages = () => {
     if (selectedImages.length === 0) return null;
 
+    // Determine how many slots to show based on game mode
+    let numberOfSlots;
+    if (choiceMode === '1-fruits-start' || choiceMode === '1-fruits-end') {
+      numberOfSlots = 1; // Only show 1 slot for 1-fruit modes
+    } else if (choiceMode === '2-fruits') {
+      numberOfSlots = 2; // Only show 2 slots for 2-fruits mode
+    } else {
+      numberOfSlots = 3; // Show 3 slots for 3-fruits modes
+    }
+
     const displayItems = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < numberOfSlots; i++) {
       if (i < selectedImages.length) {
         displayItems.push(selectedImages[i]);
       } else {
@@ -951,7 +963,12 @@ const OpenCloseGame = () => {
         ]}
       >
         <Text style={styles.selectedImagesTitle}>Selected Pictures</Text>
-        <View style={styles.fixedSelectedImagesRow}>
+        <View
+          style={[
+            styles.fixedSelectedImagesRow,
+            { justifyContent: numberOfSlots === 1 ? 'center' : 'space-around' },
+          ]}
+        >
           {displayItems.map((item, index) => (
             <View key={index} style={styles.selectedImageSlot}>
               {item ? (
@@ -1030,7 +1047,12 @@ const OpenCloseGame = () => {
               <MaterialCommunityIcons name="poll" size={20} color="white" />
               <Text style={styles.headerButtonText}>Results</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() =>
+                Linking.openURL('https://www.naphex.com/howtoplay')
+              }
+            >
               <Icon name="help" size={20} color="white" />
               <Text style={styles.headerButtonText}>How to Play</Text>
             </TouchableOpacity>

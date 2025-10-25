@@ -15,122 +15,153 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import styles from './LoginStyles';
 import API_BASE_URL from './ApiConfig';
-import logo from "../images/logo-2.jpg"
+import logo from '../images/logo-2.jpg';
 
 const EyeIcon = ({ visible, color = '#666' }) => (
-  <View style={{ width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}>
+  <View
+    style={{
+      width: 20,
+      height: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}
+  >
     {visible ? (
       // Eye Open Icon
       <View>
-        <View style={{
-          width: 18,
-          height: 12,
-          borderWidth: 1.5,
-          borderColor: color,
-          borderRadius: 9,
-          position: 'relative',
-        }} />
-        <View style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: color,
-          position: 'absolute',
-          top: 2,
-          left: 5,
-        }} />
-        <View style={{
-          width: 4,
-          height: 4,
-          borderRadius: 2,
-          backgroundColor: '#fff',
-          position: 'absolute',
-          top: 4,
-          left: 7,
-        }} />
+        <View
+          style={{
+            width: 18,
+            height: 12,
+            borderWidth: 1.5,
+            borderColor: color,
+            borderRadius: 9,
+            position: 'relative',
+          }}
+        />
+        <View
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: color,
+            position: 'absolute',
+            top: 2,
+            left: 5,
+          }}
+        />
+        <View
+          style={{
+            width: 4,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: '#fff',
+            position: 'absolute',
+            top: 4,
+            left: 7,
+          }}
+        />
       </View>
     ) : (
       // Eye Closed Icon
       <View>
-        <View style={{
-          width: 18,
-          height: 12,
-          borderWidth: 1.5,
-          borderColor: color,
-          borderRadius: 9,
-          position: 'relative',
-        }} />
-        <View style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: color,
-          position: 'absolute',
-          top: 2,
-          left: 5,
-        }} />
-        <View style={{
-          width: 20,
-          height: 2,
-          backgroundColor: color,
-          position: 'absolute',
-          top: 5,
-          left: -1,
-          transform: [{ rotate: '45deg' }],
-        }} />
+        <View
+          style={{
+            width: 18,
+            height: 12,
+            borderWidth: 1.5,
+            borderColor: color,
+            borderRadius: 9,
+            position: 'relative',
+          }}
+        />
+        <View
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: color,
+            position: 'absolute',
+            top: 2,
+            left: 5,
+          }}
+        />
+        <View
+          style={{
+            width: 20,
+            height: 2,
+            backgroundColor: color,
+            position: 'absolute',
+            top: 5,
+            left: -1,
+            transform: [{ rotate: '45deg' }],
+          }}
+        />
       </View>
     )}
   </View>
 );
 
 const HelpIcon = ({ color = '#666', size = 14 }) => (
-  <View style={{ 
-    width: size, 
-    height: size, 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    position: 'relative',
-  }}>
-    {/* Outer Circle */}
-    <View style={{
+  <View
+    style={{
       width: size,
       height: size,
-      borderRadius: size / 2,
-      borderWidth: 2,
-      borderColor: color,
       alignItems: 'center',
       justifyContent: 'center',
-    }}>
-      {/* Question Mark */}
-      <View style={{
+      position: 'relative',
+    }}
+  >
+    {/* Outer Circle */}
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: 2,
+        borderColor: color,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: -1,
-      }}>
+      }}
+    >
+      {/* Question Mark */}
+      <View
+        style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: -1,
+        }}
+      >
         {/* Top curve of question mark */}
-        <View style={{
-          width: size * 0.35,
-          height: size * 0.35,
-          borderTopWidth: 2,
-          borderRightWidth: 2,
-          borderColor: color,
-          borderTopRightRadius: size * 0.25,
-          marginBottom: 1,
-        }} />
+        <View
+          style={{
+            width: size * 0.35,
+            height: size * 0.35,
+            borderTopWidth: 2,
+            borderRightWidth: 2,
+            borderColor: color,
+            borderTopRightRadius: size * 0.25,
+            marginBottom: 1,
+          }}
+        />
         {/* Vertical line */}
-        <View style={{
-          width: 2,
-          height: size * 0.15,
-          backgroundColor: color,
-          marginBottom: 2,
-        }} />
+        <View
+          style={{
+            width: 2,
+            height: size * 0.15,
+            backgroundColor: color,
+            marginBottom: 2,
+          }}
+        />
         {/* Dot */}
-        <View style={{
-          width: 2,
-          height: 2,
-          borderRadius: 1,
-          backgroundColor: color,
-        }} />
+        <View
+          style={{
+            width: 2,
+            height: 2,
+            borderRadius: 1,
+            backgroundColor: color,
+          }}
+        />
       </View>
     </View>
   </View>
@@ -164,7 +195,9 @@ const Login = () => {
 
   const handleSubmit = async () => {
     if (failedAttempts >= 10) {
-      setError('You have exceeded the maximum number of login attempts. Please reset your password.');
+      setError(
+        'You have exceeded the maximum number of login attempts. Please reset your password.',
+      );
       navigation.navigate('ForgotPassword');
       return;
     }
@@ -186,7 +219,11 @@ const Login = () => {
 
       if (!testResponse.ok || !testData.success || !testData.passwordMatches) {
         setFailedAttempts(prev => prev + 1);
-        setError(`Invalid phone number or password. Attempts remaining: ${10 - (failedAttempts + 1)}`);
+        setError(
+          `Invalid phone number or password. Attempts remaining: ${
+            10 - (failedAttempts + 1)
+          }`,
+        );
         setLoading(false);
         return;
       }
@@ -219,12 +256,16 @@ const Login = () => {
         }
 
         if (loginResponse.status === 401) {
-          setError("Invalid credentials. Please check your phone number or password.");
+          setError(
+            'Invalid credentials. Please check your phone number or password.',
+          );
           setLoading(false);
           return;
         }
 
-        throw new Error(`Login Failed: ${loginText || loginResponse.statusText}`);
+        throw new Error(
+          `Login Failed: ${loginText || loginResponse.statusText}`,
+        );
       }
 
       // Step 3: Login success
@@ -237,21 +278,25 @@ const Login = () => {
           loginTimestamp: new Date().toISOString(),
           userids: {
             myuserid: loginData.userData.userids?.myuserid || '',
-            myrefrelid: loginData.userData.userids?.myrefrelid || ''
-          }
+            myrefrelid: loginData.userData.userids?.myrefrelid || '',
+          },
         };
 
-        await AsyncStorage.setItem('userData', JSON.stringify(userDataWithTimestamp));
+        await AsyncStorage.setItem(
+          'userData',
+          JSON.stringify(userDataWithTimestamp),
+        );
         setPhoneNo('');
         setPassword('');
 
         navigation.navigate('Home', {
-          welcomeMessage: `Welcome back, ${loginData.userData.name}!`
+          welcomeMessage: `Welcome back, ${loginData.userData.name}!`,
         });
       } else {
-        setError(loginData.message || 'Login failed. Please verify your credentials.');
+        setError(
+          loginData.message || 'Login failed. Please verify your credentials.',
+        );
       }
-
     } catch (error) {
       console.error('Login process error:', error);
 
@@ -262,7 +307,6 @@ const Login = () => {
       } else {
         setError('User not found. Please sign up and try again.');
       }
-
     } finally {
       setLoading(false);
     }
@@ -272,31 +316,40 @@ const Login = () => {
     navigation.navigate('Help');
   };
 
-  const handlePhoneNoChange = (value) => {
+  const handlePhoneNoChange = value => {
     const numericValue = value.replace(/\D/g, '').slice(0, 10);
     setPhoneNo(numericValue);
   };
 
-  const navigateToPage = (pageName) => {
+  const navigateToPage = pageName => {
     navigation.navigate(pageName);
   };
 
   const QuickLinksComponent = ({ isMobile = false }) => (
     <View style={[styles.linksContainer, isMobile && styles.mobileLinks]}>
       <Text style={styles.linksHeader}>Quick Links</Text>
-      
+
       <View style={styles.navLinks}>
-        <TouchableOpacity 
-          style={[styles.navLink, styles.navLinkStatus]} 
+        <TouchableOpacity
+          style={[styles.navLink, styles.navLinkStatus]}
           onPress={() => navigateToPage('StatusCheck')}
         >
           <Text style={styles.linkIcon}>📊</Text>
           <Text style={styles.linkText}>Check account status</Text>
           <Text style={styles.linkArrow}>→</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.navLink, styles.navLinkTerms]} 
+
+        <TouchableOpacity
+          style={[styles.navLink, styles.navLinkStatus]}
+          onPress={() => Linking.openURL('https://www.naphex.com/howtoplay')}
+        >
+          <Text style={styles.linkIcon}>📽️</Text>
+          <Text style={styles.linkText}>How To Play</Text>
+          <Text style={styles.linkArrow}>→</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.navLink, styles.navLinkTerms]}
           onPress={() => navigateToPage('TermsAndConditions')}
         >
           <Text style={styles.linkIcon}>📋</Text>
@@ -304,8 +357,8 @@ const Login = () => {
           <Text style={styles.linkArrow}>→</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.navLink, styles.navLinkKyc]} 
+        <TouchableOpacity
+          style={[styles.navLink, styles.navLinkKyc]}
           onPress={() => navigateToPage('KycPolicy')}
         >
           <Text style={styles.linkIcon}>🔒</Text>
@@ -313,8 +366,8 @@ const Login = () => {
           <Text style={styles.linkArrow}>→</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.navLink, styles.navLinkPrivacy]} 
+        <TouchableOpacity
+          style={[styles.navLink, styles.navLinkPrivacy]}
           onPress={() => navigateToPage('PrivacyPolicy')}
         >
           <Text style={styles.linkIcon}>🛡️</Text>
@@ -322,8 +375,8 @@ const Login = () => {
           <Text style={styles.linkArrow}>→</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.navLink, styles.navLinkAbout]} 
+        <TouchableOpacity
+          style={[styles.navLink, styles.navLinkAbout]}
           onPress={() => navigateToPage('About')}
         >
           <Text style={styles.linkIcon}>ℹ️</Text>
@@ -337,8 +390,8 @@ const Login = () => {
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#42a5f5" barStyle="light-content" />
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -346,8 +399,8 @@ const Login = () => {
         {/* Logo Section */}
         <View style={styles.logoSection}>
           <View style={styles.companyLogo}>
-            <Image 
-              source={logo} 
+            <Image
+              source={logo}
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -361,7 +414,9 @@ const Login = () => {
             <View style={styles.loginCard}>
               <View style={styles.cardHeader}>
                 <Text style={styles.headerTitle}>Welcome Back</Text>
-                <Text style={styles.headerSubtitle}>NADAKATTI ENTERPRISES PRESENTS NAPHEX</Text>
+                <Text style={styles.headerSubtitle}>
+                  NADAKATTI ENTERPRISES PRESENTS NAPHEX
+                </Text>
               </View>
 
               <View style={styles.cardBody}>
@@ -402,9 +457,9 @@ const Login = () => {
                       onPress={() => setShowPassword(!showPassword)}
                       disabled={loading}
                     >
-                      <EyeIcon 
-                        visible={showPassword} 
-                        color="rgba(255, 255, 255, 0.8)" 
+                      <EyeIcon
+                        visible={showPassword}
+                        color="rgba(255, 255, 255, 0.8)"
                       />
                     </TouchableOpacity>
                   </View>
@@ -415,24 +470,32 @@ const Login = () => {
                   onPress={handleSubmit}
                   disabled={loading}
                 >
-                  {loading && <ActivityIndicator size="small" color="#ffffff" style={styles.spinner} />}
+                  {loading && (
+                    <ActivityIndicator
+                      size="small"
+                      color="#ffffff"
+                      style={styles.spinner}
+                    />
+                  )}
                   <Text style={styles.btnText}>
                     {loading ? 'Logging In...' : 'Log In'}
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.forgotPasswordLink}
                   onPress={() => navigation.navigate('ForgotPassword')}
                 >
-                  <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+                  <Text style={styles.forgotPasswordText}>
+                    Forgot your password?
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.cardFooter}>
                 <Text style={styles.cardFooterText}>
                   Don't have an account?{' '}
-                  <Text 
+                  <Text
                     style={styles.signupLink}
                     onPress={() => navigation.navigate('Signup')}
                   >

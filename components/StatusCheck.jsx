@@ -16,7 +16,7 @@ import GetId from './GetId'; // Import your GetId component
 
 const { width } = Dimensions.get('window');
 
-const StatusCheck = ({ navigation }) => {
+const StatusCheck = ({ navigation, route }) => {
   const [userId, setUserId] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusResult, setStatusResult] = useState(null);
@@ -398,6 +398,13 @@ const StatusCheck = ({ navigation }) => {
     setShowGetId(false);
   };
 
+  // Handle back button press
+  const handleBackPress = () => {
+    if (navigation && navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  };
+
   // If GetId component should be shown, render it instead
   if (showGetId) {
     return (
@@ -410,12 +417,19 @@ const StatusCheck = ({ navigation }) => {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
+      {/* Header with Back Button */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Account Status Checker</Text>
-        <Text style={styles.headerSubtitle}>
-          Check your KYC verification and account approval status
-        </Text>
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={handleBackPress}
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Account Status Checker</Text>
+          </View>
+        </View>
       </View>
 
       {/* Get User ID Button */}
@@ -555,7 +569,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     marginBottom: 20,
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -563,17 +576,35 @@ const styles = StyleSheet.create({
     elevation: 8,
     marginTop: 20
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  backButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 12,
+    marginTop: 4,
+  },
+  backButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
-    textAlign: 'center',
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 16,
     color: '#ffffff',
-    textAlign: 'center',
     opacity: 0.9,
     marginBottom: 12,
   },
