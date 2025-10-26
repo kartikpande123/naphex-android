@@ -147,7 +147,6 @@ const TransactionHistory = () => {
           date: new Date(order.processedAt || Date.now()),
           amountRequested: order.amountPaid || 0,
           amountCredited: creditedAmount,
-          balanceAfter: runningBalance,
           tax: order.taxAmount || 0,
           taxRate: order.taxRate || '0%',
           status: order.status || 'pending',
@@ -160,22 +159,12 @@ const TransactionHistory = () => {
     // Process withdrawals - these subtract from balance
     if (userData.withdrawals) {
       Object.entries(userData.withdrawals).forEach(([withdrawalId, withdrawal]) => {
-        const balanceBefore = runningBalance;
-        let balanceAfter = balanceBefore;
-        
-        // Only subtract from balance if withdrawal is approved/completed
-        if (withdrawal.status === 'approved' || withdrawal.status === 'completed') {
-          runningBalance -= (withdrawal.requestedTokens || 0);
-          balanceAfter = runningBalance;
-        }
-        
         const transaction = {
           id: withdrawalId,
           type: 'withdrawal',
           date: new Date(withdrawal.createdAt || Date.now()),
           amountRequested: withdrawal.requestedTokens || 0,
           amountCredited: -(withdrawal.requestedTokens || 0),
-          balanceAfter: withdrawal.status === 'pending' ? null : balanceAfter,
           tax: withdrawal.tax || 0,
           taxRate: withdrawal.tax ? `${((withdrawal.tax / withdrawal.requestedTokens) * 100).toFixed(0)}%` : '0%',
           status: withdrawal.status || 'pending',
@@ -346,13 +335,6 @@ const TransactionHistory = () => {
             item.amountCredited > 0 ? styles.positiveAmount : styles.negativeAmount
           ]}>
             {item.type === 'deposit' ? '+' : ''}{item.amountCredited} Tokens
-          </Text>
-        </View>
-
-        <View style={styles.transactionRow}>
-          <Text style={styles.label}>Balance After:</Text>
-          <Text style={styles.amount}>
-            {item.balanceAfter !== null ? `${item.balanceAfter} Tokens` : '-'}
           </Text>
         </View>
 

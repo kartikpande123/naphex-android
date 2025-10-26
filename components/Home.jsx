@@ -830,7 +830,7 @@ const Home = () => {
               disabled={!isEntryFeePaid}
             >
               <Image
-                source={require('../images/final_banner_3.png')}
+                source={require('../images/final_banner_4.jpg')}
                 style={[
                   styles.bannerImage,
                   !isEntryFeePaid && styles.disabledImage
