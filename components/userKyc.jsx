@@ -560,7 +560,7 @@ const UserKyc = () => {
         setTimeout(() => setCopiedRefId(false), 2000);
       }
 
-      showAlert('User ID copied to clipboard!', false);
+      showAlert(`${type === 'userId' ? 'User ID' : 'Referral ID'} copied to clipboard!`, false);
     } catch (err) {
       console.error('Failed to copy:', err);
       showAlert('Failed to copy to clipboard', true);
@@ -802,6 +802,7 @@ const UserKyc = () => {
               </LinearGradient>
 
               <View style={styles.verificationContent}>
+                {/* User ID Section */}
                 <View style={styles.userIdBox}>
                   <View style={styles.userIdHeader}>
                     <Icon name="person-circle" size={26} color="#155724" />
@@ -832,6 +833,37 @@ const UserKyc = () => {
                   </Text>
                 </View>
 
+                {/* Referral ID Section */}
+                <View style={styles.referralIdBox}>
+                  <View style={styles.referralIdHeader}>
+                    <Icon name="gift" size={26} color="#155724" />
+                    <Text style={styles.referralIdTitle}>Your Referral ID</Text>
+                  </View>
+                  
+                  <View style={styles.idDisplayContainer}>
+                    <View style={styles.referralIdDisplay}>
+                      <Text style={styles.referralIdText}>{referralId}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.copyButton, copiedRefId && styles.copyButtonSuccess]}
+                      onPress={() => copyToClipboard(referralId, 'referralId')}
+                    >
+                      <Icon 
+                        name={copiedRefId ? "checkmark" : "copy-outline"} 
+                        size={18} 
+                        color="white" 
+                      />
+                      <Text style={styles.copyButtonText}>
+                        {copiedRefId ? "Copied!" : "Copy"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <Text style={styles.referralIdNote}>
+                    Share this ID with friends to earn referral bonuses
+                  </Text>
+                </View>
+
                 <View style={styles.verificationStatus}>
                   <Icon name="time-outline" size={24} color="#D97706" />
                   <Text style={styles.verificationStatusText}>Under Admin Review</Text>
@@ -859,7 +891,7 @@ const UserKyc = () => {
                   <Text style={styles.importantNoteText}>
                     ⏰ Verification process takes up to 24 hours{'\n'}
                     🔐 Try logging in after 24 hours{'\n'}
-                    📋 Save your User ID for status checking{'\n'}
+                    📋 Save your User ID & Referral ID{'\n'}
                     ❓ No response? Contact admin through help section
                   </Text>
                 </View>

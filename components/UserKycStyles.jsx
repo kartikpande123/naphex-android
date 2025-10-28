@@ -450,11 +450,13 @@ const styles = StyleSheet.create({
   verificationContent: {
     padding: 32,
   },
+  
+  // User ID Box Styles
   userIdBox: {
     backgroundColor: '#f8fffe',
     borderRadius: 18,
     padding: 28,
-    marginBottom: 32,
+    marginBottom: 20,
     borderWidth: 3,
     borderColor: '#28a745',
   },
@@ -470,41 +472,84 @@ const styles = StyleSheet.create({
     color: '#155724',
     marginLeft: 12,
   },
-  idContent: {
+  
+  // Referral ID Box Styles
+  referralIdBox: {
+    backgroundColor: '#fff8e1',
+    borderRadius: 18,
+    padding: 28,
+    marginBottom: 32,
+    borderWidth: 3,
+    borderColor: '#ffc107',
+  },
+  referralIdHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#dee2e6',
+    justifyContent: 'center',
     marginBottom: 20,
   },
-  idCode: {
+  referralIdTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#856404',
+    marginLeft: 12,
+  },
+  
+  // Common ID Display Styles
+  idDisplayContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  userIdDisplay: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2c3e50',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    letterSpacing: 1.5,
     backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 10,
+    padding: 16,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e9ecef',
+    marginRight: 12,
+  },
+  referralIdDisplay: {
+    flex: 1,
+    backgroundColor: '#fffdf6',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ffeaa7',
+    marginRight: 12,
+  },
+  userIdText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2c3e50',
     textAlign: 'center',
+    letterSpacing: 1,
+  },
+  referralIdText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#856404',
+    textAlign: 'center',
+    letterSpacing: 1,
   },
   copyButton: {
     backgroundColor: '#007bff',
     borderRadius: 12,
     padding: 14,
-    marginLeft: 16,
-    minWidth: 50,
+    minWidth: 80,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
   },
   copyButtonSuccess: {
     backgroundColor: '#28a745',
+  },
+  copyButtonText: {
+    color: 'white',
+    fontSize: 12,
+    marginLeft: 4,
+    fontWeight: '500',
   },
   userIdNote: {
     fontSize: 14,
@@ -513,6 +558,14 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 20,
   },
+  referralIdNote: {
+    fontSize: 14,
+    color: '#856404',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    lineHeight: 20,
+  },
+  
   verificationStatus: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -669,32 +722,6 @@ const styles = StyleSheet.create({
   },
   alertTextError: {
     color: '#dc2626',
-  },
-  idDisplayContainer: {
-    width: '100%',
-    marginBottom: 12,
-  },
-  userIdDisplay: {
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    marginBottom: 12,
-    width: '100%',
-  },
-  userIdText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    textAlign: 'center',
-    letterSpacing: 1,
-  },
-  copyButtonText: {
-    color: 'white',
-    fontSize: 12,
-    marginLeft: 4,
-    fontWeight: '500',
   },
   importantNotice: {
     backgroundColor: '#fff3cd',
