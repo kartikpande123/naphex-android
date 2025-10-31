@@ -417,6 +417,9 @@ const Login = () => {
                 <Text style={styles.headerSubtitle}>
                   NADAKATTI ENTERPRISES PRESENTS NAPHEX
                 </Text>
+                <Text style={styles.headerSubtitle}>
+                  Contact: +91 7892739656 (WhatsApp)
+                </Text>
               </View>
 
               <View style={styles.cardBody}>

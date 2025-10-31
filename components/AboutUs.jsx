@@ -301,6 +301,113 @@ const CustomIcon = ({ name, size = 24, color = 'white' }) => {
             </View>
           </View>
         );
+      case 'building':
+        return (
+          <View style={iconStyle}>
+            <View style={{
+              width: size * 0.8,
+              height: size * 0.6,
+              borderWidth: 2,
+              borderColor: color,
+              borderRadius: 2,
+            }} />
+            <View style={{
+              position: 'absolute',
+              top: size * 0.15,
+              left: size * 0.2,
+              width: size * 0.1,
+              height: size * 0.1,
+              backgroundColor: color,
+            }} />
+            <View style={{
+              position: 'absolute',
+              top: size * 0.15,
+              right: size * 0.2,
+              width: size * 0.1,
+              height: size * 0.1,
+              backgroundColor: color,
+            }} />
+            <View style={{
+              position: 'absolute',
+              bottom: size * 0.15,
+              left: size * 0.2,
+              width: size * 0.1,
+              height: size * 0.1,
+              backgroundColor: color,
+            }} />
+            <View style={{
+              position: 'absolute',
+              bottom: size * 0.15,
+              right: size * 0.2,
+              width: size * 0.1,
+              height: size * 0.1,
+              backgroundColor: color,
+            }} />
+          </View>
+        );
+      case 'map-pin':
+        return (
+          <View style={iconStyle}>
+            <View style={{
+              width: size * 0.6,
+              height: size * 0.6,
+              borderRadius: size * 0.3,
+              borderWidth: 2,
+              borderColor: color,
+            }} />
+            <View style={{
+              position: 'absolute',
+              bottom: -size * 0.1,
+              left: size * 0.2,
+              width: size * 0.2,
+              height: size * 0.3,
+              backgroundColor: color,
+              borderBottomLeftRadius: size * 0.1,
+              borderBottomRightRadius: size * 0.1,
+            }} />
+          </View>
+        );
+      case 'phone':
+        return (
+          <View style={iconStyle}>
+            <View style={{
+              width: size * 0.6,
+              height: size * 0.8,
+              borderWidth: 2,
+              borderColor: color,
+              borderRadius: size * 0.1,
+              position: 'relative',
+            }}>
+              <View style={{
+                position: 'absolute',
+                top: size * 0.1,
+                left: size * 0.2,
+                right: size * 0.2,
+                height: 2,
+                backgroundColor: color,
+              }} />
+              <View style={{
+                position: 'absolute',
+                top: size * 0.2,
+                left: size * 0.25,
+                right: size * 0.25,
+                height: size * 0.3,
+                borderWidth: 2,
+                borderColor: color,
+                borderRadius: 2,
+              }} />
+              <View style={{
+                position: 'absolute',
+                bottom: size * 0.1,
+                left: size * 0.25,
+                right: size * 0.25,
+                height: size * 0.1,
+                borderRadius: size * 0.05,
+                backgroundColor: color,
+              }} />
+            </View>
+          </View>
+        );
       default:
         return (
           <View style={{
@@ -317,7 +424,11 @@ const CustomIcon = ({ name, size = 24, color = 'white' }) => {
 
 const AboutPage = ({ navigation }) => {
   const handleEmailPress = () => {
-    Linking.openURL('mailto:naphex.com@gmail.com');
+    Linking.openURL('mailto:naphex24@outlook.com');
+  };
+
+  const handlePhonePress = () => {
+    Linking.openURL('tel:+917892739656');
   };
 
   const handleLinkPress = (route) => {
@@ -360,6 +471,17 @@ const AboutPage = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#0f172a" barStyle="light-content" />
+      
+      {/* GSTN Number Bar */}
+      <CustomGradient
+        colors={['rgba(30, 58, 138, 0.8)', 'rgba(6, 182, 212, 0.8)']}
+        style={styles.gstnBar}
+      >
+        <View style={styles.gstnContent}>
+          <CustomIcon name="building" size={18} color="#22d3ee" />
+          <Text style={styles.gstnText}>GSTN: 29AAWFN6270D1ZR</Text>
+        </View>
+      </CustomGradient>
       
       <ScrollView 
         style={styles.scrollView}
@@ -517,6 +639,60 @@ const AboutPage = ({ navigation }) => {
             </Text>
           </CustomGradient>
 
+          {/* Contact Us Section */}
+          <CustomGradient
+            colors={['rgba(15, 23, 42, 0.7)', 'rgba(30, 58, 138, 0.5)']}
+            style={styles.contactCard}
+          >
+            <View style={styles.contactHeader}>
+              <Text style={styles.contactTitle}>Contact Us</Text>
+              <Text style={styles.contactSubtitle}>Get in touch with Nadakatti Enterprises</Text>
+            </View>
+            
+            <View style={styles.contactGrid}>
+              <View style={styles.contactItem}>
+                <CustomGradient
+                  colors={['#3b82f6', '#06b6d4']}
+                  style={styles.contactIconContainer}
+                >
+                  <CustomIcon name="building" size={28} color="white" />
+                </CustomGradient>
+                <Text style={styles.contactItemTitle}>Company Name</Text>
+                <Text style={styles.contactItemText}>Nadakatti Enterprises</Text>
+              </View>
+              
+              <View style={styles.contactItem}>
+                <CustomGradient
+                  colors={['#3b82f6', '#06b6d4']}
+                  style={styles.contactIconContainer}
+                >
+                  <CustomIcon name="map-pin" size={28} color="white" />
+                </CustomGradient>
+                <Text style={styles.contactItemTitle}>Address</Text>
+                <Text style={styles.contactItemText}>
+                  Narendra Cross{'\n'}
+                  Dharwad{'\n'}
+                  Karnataka 580005
+                </Text>
+              </View>
+              
+              <View style={styles.contactItem}>
+                <CustomGradient
+                  colors={['#3b82f6', '#06b6d4']}
+                  style={styles.contactIconContainer}
+                >
+                  <CustomIcon name="phone" size={28} color="white" />
+                </CustomGradient>
+                <Text style={styles.contactItemTitle}>Phone</Text>
+                <TouchableOpacity onPress={handlePhonePress}>
+                  <Text style={[styles.contactItemText, styles.phoneLink]}>
+                    +91 7892739656
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </CustomGradient>
+
           {/* Support Section */}
           <CustomGradient
             colors={['rgba(30, 58, 138, 0.4)', 'rgba(15, 23, 42, 0.6)']}
@@ -547,7 +723,7 @@ const AboutPage = ({ navigation }) => {
                     style={styles.emailButton}
                   >
                     <CustomIcon name="mail" size={20} color="white" />
-                    <Text style={styles.emailButtonText}>naphex.com@gmail.com</Text>
+                    <Text style={styles.emailButtonText}>naphex24@outlook.com</Text>
                   </CustomGradient>
                 </TouchableOpacity>
               </View>
@@ -639,6 +815,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f172a',
+  },
+  // GSTN Bar Styles
+  gstnBar: {
+    paddingTop: 40, // Added margin from top for mobile status bar
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  gstnContent: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gstnText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+    marginLeft: 8,
+    letterSpacing: 0.5,
   },
   scrollView: {
     flex: 1,
@@ -787,6 +982,62 @@ const styles = StyleSheet.create({
     color: '#e2e8f0',
     lineHeight: 24,
     textAlign: 'center',
+  },
+  // Contact Us Section Styles
+  contactCard: {
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  contactHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  contactTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+  },
+  contactSubtitle: {
+    fontSize: 16,
+    color: '#e2e8f0',
+  },
+  contactGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  contactItem: {
+    width: width < 400 ? '100%' : '48%',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  contactIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  contactItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  contactItemText: {
+    fontSize: 14,
+    color: '#e2e8f0',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  phoneLink: {
+    color: '#22d3ee',
   },
   supportCard: {
     borderRadius: 16,

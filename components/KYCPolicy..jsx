@@ -165,7 +165,7 @@ const KycPolicy = () => {
                   <Text style={styles.darkText}>For any queries related to this policy:</Text>
                   <View style={styles.contactInfo}>
                     <Text style={styles.darkText}>
-                      <Text style={styles.boldText}>Email:</Text> naphex.com@gmail.com
+                      <Text style={styles.boldText}>Email:</Text> naphex24@outlook.com
                     </Text>
                     <Text style={styles.darkText}>
                       <Text style={styles.boldText}>Phone:</Text> +91-7892739656

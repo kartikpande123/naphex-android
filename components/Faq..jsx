@@ -122,7 +122,7 @@ const ResponsibleGaming = () => {
                   <View style={styles.contactInfo}>
                     <Text style={styles.contactLabel}>Email: </Text>
                     <TouchableOpacity onPress={handleEmailPress}>
-                      <Text style={styles.contactLink}>naphex.com@gmail.com</Text>
+                      <Text style={styles.contactLink}>naphex24@outlook.com</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

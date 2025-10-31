@@ -117,7 +117,7 @@ const PrivacyPolicy = () => {
             <Section title="13. Contact Us">
               <Box gradient={['#f3e8ff', '#e9d5ff']} borderColor="#8b5cf6">
                 <Text style={styles.contactText}>
-                  <Text style={styles.bold}>Email:</Text> naphex.com@gmail.com{'\n'}
+                  <Text style={styles.bold}>Email:</Text> naphex24@outlook.com{'\n'}
                   <Text style={styles.bold}>Phone:</Text> +91-7892739656
                 </Text>
               </Box>

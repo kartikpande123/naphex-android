@@ -232,7 +232,7 @@ const TermsAndConditions = () => {
                 >
                   <Text style={styles.contactText}>
                     Reach us with any questions about your account or these terms.{'\n\n'}
-                    <Text style={styles.contactBold}>Email:</Text> naphex.com@gmail.com{'\n'}
+                    <Text style={styles.contactBold}>Email:</Text> naphex24@outlook.com{'\n'}
                     <Text style={styles.contactBold}>Phone:</Text> +91-7892739656
                   </Text>
                 </LinearGradient>

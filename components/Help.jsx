@@ -156,7 +156,7 @@ const Help = () => {
   };
 
   const handleWhatsAppRedirect = async () => {
-  const phoneNumber = '919019842426';
+  const phoneNumber = '917892739656';
   const message = 'Hello, I need help with my query.';
   
   // Primary WhatsApp URL - this works on most devices
