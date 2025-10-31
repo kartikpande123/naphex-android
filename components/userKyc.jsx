@@ -421,10 +421,11 @@ const UserKyc = () => {
   };
 
   const handleKYCSubmit = () => {
-    const { aadharCard, panCard, bankPassbook, selfie } = kycData;
+    const { aadharCard, panCard, selfie } = kycData;
 
-    if (!aadharCard || !panCard || !bankPassbook || !selfie) {
-      showAlert('Please upload all required documents and take a selfie', true);
+    // Bank passbook is now optional, only check for required documents
+    if (!aadharCard || !panCard || !selfie) {
+      showAlert('Please upload Aadhar Card, PAN Card, and take a selfie. Bank Passbook is optional.', true);
       return;
     }
 
@@ -449,8 +450,9 @@ const UserKyc = () => {
         throw new Error('Required signup data is missing');
       }
 
-      if (!kycData.aadharCard || !kycData.panCard || !kycData.bankPassbook || !kycData.selfie) {
-        throw new Error('All KYC documents and selfie are required');
+      // Updated validation - bank passbook is now optional
+      if (!kycData.aadharCard || !kycData.panCard || !kycData.selfie) {
+        throw new Error('Aadhar Card, PAN Card, and Selfie are required. Bank Passbook is optional.');
       }
 
       console.log('=== CREATING FORM DATA ===');
@@ -481,8 +483,15 @@ const UserKyc = () => {
 
       formData.append('aadharCard', formatFileForRN(kycData.aadharCard, 'aadhar.jpg'));
       formData.append('panCard', formatFileForRN(kycData.panCard, 'pan.jpg'));
-      formData.append('bankPassbook', formatFileForRN(kycData.bankPassbook, 'passbook.jpg'));
       formData.append('selfie', formatFileForRN(kycData.selfie, 'selfie.jpg'));
+
+      // Bank passbook is optional - only append if exists
+      if (kycData.bankPassbook) {
+        formData.append('bankPassbook', formatFileForRN(kycData.bankPassbook, 'passbook.jpg'));
+        console.log('Bank Passbook added to FormData');
+      } else {
+        console.log('Bank Passbook not provided (optional)');
+      }
 
       console.log('Files added to FormData');
       console.log('API URL:', `${API_BASE_URL}/registerUser`);
@@ -575,11 +584,14 @@ const UserKyc = () => {
     navigation.navigate('Help');
   };
 
-  const DocumentUpload = ({ documentType, label, iconName }) => (
+  const DocumentUpload = ({ documentType, label, iconName, isOptional = false }) => (
     <View style={styles.documentUpload}>
       <View style={styles.documentLabel}>
         <Icon name={iconName} size={18} color="#4F46E5" />
         <Text style={styles.documentLabelText}>{label}</Text>
+        {isOptional && (
+          <Text style={styles.optionalText}> (Optional)</Text>
+        )}
       </View>
       
       <TouchableOpacity
@@ -606,6 +618,7 @@ const UserKyc = () => {
             <Icon name="cloud-upload-outline" size={24} color="#9CA3AF" />
             <Text style={styles.uploadPlaceholderText}>
               Tap to upload {label}
+              {isOptional && ' (Optional)'}
             </Text>
           </View>
         )}
@@ -731,6 +744,7 @@ const UserKyc = () => {
                 documentType="bankPassbook"
                 label="Bank Passbook"
                 iconName="business-outline"
+                isOptional={true}
               />
 
               {/* Selfie Capture Section */}
@@ -739,11 +753,11 @@ const UserKyc = () => {
               <TouchableOpacity
                 style={[
                   styles.submitKycBtn,
-                  (!kycData.aadharCard || !kycData.panCard || !kycData.bankPassbook || !kycData.selfie) && 
+                  (!kycData.aadharCard || !kycData.panCard || !kycData.selfie) && 
                   styles.submitKycBtnDisabled
                 ]}
                 onPress={handleKYCSubmit}
-                disabled={!kycData.aadharCard || !kycData.panCard || !kycData.bankPassbook || !kycData.selfie}
+                disabled={!kycData.aadharCard || !kycData.panCard || !kycData.selfie}
               >
                 <Text style={styles.submitKycBtnText}>Submit KYC Documents</Text>
               </TouchableOpacity>
