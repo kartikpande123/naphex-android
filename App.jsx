@@ -31,6 +31,7 @@ import TransactionHistory from './components/TransactionHistory';
 import HowToPlay from './components/HowToPlay';
 import UserTokenRequest from './components/UserTokenRequest';
 import UserWins from './components/UserWins';
+import IngameTransaction from './components/IngameTransaction';
 
 const Stack = createStackNavigator();
 
@@ -73,6 +74,7 @@ function App() {
         <Stack.Screen name="TransactionHistory" component={TransactionHistory} />
         <Stack.Screen name="UserTokenRequest" component={UserTokenRequest} />
         <Stack.Screen name="UserWins" component={UserWins} />
+        <Stack.Screen name="IngameTransaction" component={IngameTransaction} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -61,9 +61,10 @@ const Home = () => {
     return `${winner.date}_${winner.session}_${winner.userId}_${winner.gameId}`;
   };
 
-  // Format token count for display (show full numbers)
+  // Format token count for display (show 2 decimal places)
   const formatTokenCount = (count) => {
-    return count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const num = typeof count === 'number' ? count : parseFloat(count || 0);
+    return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 
   // Network connectivity monitor

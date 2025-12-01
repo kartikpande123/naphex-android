@@ -21,20 +21,20 @@ import axios from 'axios';
 // If you don't have react-native-vector-icons, replace with Text
 const Icon = ({ name, size, color, style }) => {
   const iconMap = {
-    'info': 'ℹ️',
-    'schedule': '⏰',
-    'search': '🔍',
+    info: 'ℹ️',
+    schedule: '⏰',
+    search: '🔍',
     'expand-more': '⬇️',
     'expand-less': '⬆️',
     'add-box': '📦',
-    'close': '❌',
+    close: '❌',
     'arrow-drop-down': '⬇️',
-    'warning': '⚠️',
+    warning: '⚠️',
     'account-tree': '🌳',
-    'link': '🔗',
-    'copy': '📋',
+    link: '🔗',
+    copy: '📋',
   };
-  
+
   return (
     <Text style={[{ fontSize: size, color }, style]}>
       {iconMap[name] || '•'}
@@ -80,17 +80,17 @@ const UserBinaryTreeMobile = () => {
   // Extract all users from tree for search suggestions
   const extractAllUsers = (node, users = []) => {
     if (!node) return users;
-    
+
     users.push({
       name: node.name,
       userId: node.userId,
-      fullData: node
+      fullData: node,
     });
-    
+
     if (node.children) {
       node.children.forEach(child => extractAllUsers(child, users));
     }
-    
+
     return users;
   };
 
@@ -108,12 +108,12 @@ const UserBinaryTreeMobile = () => {
       }
 
       const response = await axios.get(
-        `${API_BASE_URL}/user-downline?userId=${userId}`
+        `${API_BASE_URL}/user-downline?userId=${userId}`,
       );
       setTreeData(response.data);
       setOriginalTreeData(response.data);
       setIsFilteredView(false);
-      
+
       // Extract all users for search suggestions
       const users = extractAllUsers(response.data);
       setAllUsers(users);
@@ -142,15 +142,18 @@ const UserBinaryTreeMobile = () => {
   };
 
   // Handle search input change with suggestions
-  const handleSearchInputChange = (text) => {
+  const handleSearchInputChange = text => {
     setSearchTerm(text);
-    
+
     if (text.trim().length > 0) {
-      const suggestions = allUsers.filter(user => 
-        user.name.toLowerCase().includes(text.toLowerCase()) ||
-        user.userId.toLowerCase().includes(text.toLowerCase())
-      ).slice(0, 5); // Limit to 5 suggestions
-      
+      const suggestions = allUsers
+        .filter(
+          user =>
+            user.name.toLowerCase().includes(text.toLowerCase()) ||
+            user.userId.toLowerCase().includes(text.toLowerCase()),
+        )
+        .slice(0, 5); // Limit to 5 suggestions
+
       setSearchSuggestions(suggestions);
       setShowSuggestions(true);
     } else {
@@ -160,7 +163,7 @@ const UserBinaryTreeMobile = () => {
   };
 
   // Handle suggestion selection
-  const handleSuggestionSelect = (suggestion) => {
+  const handleSuggestionSelect = suggestion => {
     setSearchTerm(suggestion.name);
     setShowSuggestions(false);
     // Focus on the selected node
@@ -168,19 +171,19 @@ const UserBinaryTreeMobile = () => {
   };
 
   // Focus on a specific node (mobile-friendly view)
-  const focusOnNode = (node) => {
+  const focusOnNode = node => {
     setCurrentFocusNode(node);
-    
+
     // Expand only this node and its immediate children
     const newExpanded = {};
     newExpanded[node.userId] = true;
     setExpandedNodes(newExpanded);
-    
+
     setViewMode('focused');
   };
 
   // Calculate empty slots in the tree
-  const calculateEmptySlots = (rootNode) => {
+  const calculateEmptySlots = rootNode => {
     const slots = [];
 
     const findEmptySlots = (node, level = 0) => {
@@ -192,7 +195,7 @@ const UserBinaryTreeMobile = () => {
           parentId: node.userId,
           level: level + 1,
           availablePositions: ['left', 'right'],
-          parentNode: node
+          parentNode: node,
         });
       } else if (node.children.length === 1) {
         const existingChild = node.children[0];
@@ -204,7 +207,7 @@ const UserBinaryTreeMobile = () => {
           parentId: node.userId,
           level: level + 1,
           availablePositions: [emptyPosition],
-          parentNode: node
+          parentNode: node,
         });
       }
 
@@ -230,7 +233,7 @@ const UserBinaryTreeMobile = () => {
   };
 
   const extractUserSubtree = (rootNode, targetUserId) => {
-    const findUserAndExtractSubtree = (node) => {
+    const findUserAndExtractSubtree = node => {
       if (!node) return null;
 
       if (node.userId === targetUserId) {
@@ -251,7 +254,7 @@ const UserBinaryTreeMobile = () => {
   };
 
   // Navigate to user (focus on them in mobile view)
-  const navigateToUser = (userId) => {
+  const navigateToUser = userId => {
     const userSubtree = extractUserSubtree(originalTreeData, userId);
 
     if (userSubtree) {
@@ -269,10 +272,10 @@ const UserBinaryTreeMobile = () => {
       setTreeData(originalTreeData);
       setIsFilteredView(false);
     }
-    
+
     setCurrentFocusNode(originalTreeData);
     setViewMode('full');
-    
+
     const newExpandedNodes = {};
     newExpandedNodes[originalTreeData.userId] = true;
     setExpandedNodes(newExpandedNodes);
@@ -296,9 +299,10 @@ const UserBinaryTreeMobile = () => {
       return;
     }
 
-    const matchingUser = allUsers.find(user => 
-      user.name.toLowerCase() === searchTerm.toLowerCase() ||
-      user.userId.toLowerCase() === searchTerm.toLowerCase()
+    const matchingUser = allUsers.find(
+      user =>
+        user.name.toLowerCase() === searchTerm.toLowerCase() ||
+        user.userId.toLowerCase() === searchTerm.toLowerCase(),
     );
 
     if (matchingUser) {
@@ -310,7 +314,7 @@ const UserBinaryTreeMobile = () => {
   };
 
   // Toggle node expansion (mobile-friendly)
-  const toggleNode = (userId) => {
+  const toggleNode = userId => {
     const node = allUsers.find(user => user.userId === userId)?.fullData;
     if (node) {
       // When expanding a node, focus on it and show only its children
@@ -326,91 +330,92 @@ const UserBinaryTreeMobile = () => {
   };
 
   // Check if a node is highlighted
-  const isHighlighted = (node) => {
+  const isHighlighted = node => {
     return searchResults.some(path =>
-      path.some(pathNode => pathNode.userId === node.userId)
+      path.some(pathNode => pathNode.userId === node.userId),
     );
   };
 
   // Check if node is in a search path
-  const isInSearchPath = (nodeId) => {
+  const isInSearchPath = nodeId => {
     return searchPaths.some(path => path.includes(nodeId));
   };
 
   // Format number with commas
-  const formatNumber = (num) => {
+  const formatNumber = num => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 
   // Mobile-optimized tree rendering (show only focused node and its children)
   // Replace your renderMobileTree function with this updated version:
 
-const renderMobileTree = () => {
-  if (!currentFocusNode) return null;
+  const renderMobileTree = () => {
+    if (!currentFocusNode) return null;
 
-  const node = currentFocusNode;
-  const isExpanded = expandedNodes[node.userId];
-  const hasChildren = node.children && node.children.length > 0;
+    const node = currentFocusNode;
+    const isExpanded = expandedNodes[node.userId];
+    const hasChildren = node.children && node.children.length > 0;
 
-  return (
-    <View style={styles.mobileTreeContainer}>
-      {/* Parent/Main Node */}
-      <View style={styles.mobileNodeContainer}>
-        {renderMobileNode(node, 0, 'root')}
-      </View>
-
-      {/* Children Nodes with Horizontal Scroll Support */}
-      {isExpanded && hasChildren && (
-        <ScrollView 
-          horizontal={true}
-          showsHorizontalScrollIndicator={true}
-          contentContainerStyle={styles.mobileChildrenContainer}
-          style={styles.horizontalScrollContainer}
-        >
-          <View style={styles.mobileChildrenRow}>
-            {node.children.map((child, index) => (
-              <View key={child.userId} style={styles.mobileChildNode}>
-                {renderMobileNode(child, 1, index === 0 ? 'left' : 'right')}
-              </View>
-            ))}
-            
-            {/* If only one child, show empty slot */}
-            {node.children.length === 1 && (
-              <View style={styles.mobileChildNode}>
-                <View style={[styles.emptySlotNode, styles.mobileEmptySlot]}>
-                  <Text style={styles.emptySlotText}>Empty Slot</Text>
-                  <Text style={styles.emptySlotPosition}>
-                    {node.children[0].position === 'left' ? 'Right' : 'Left'}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      )}
-
-      {/* Navigation buttons */}
-      {hasChildren && (
-        <View style={styles.mobileNavigation}>
-          {node.children.map((child) => (
-            <TouchableOpacity
-              key={child.userId}
-              style={styles.mobileNavButton}
-              onPress={() => focusOnNode(child)}
-            >
-              <Text style={styles.mobileNavButtonText}>
-                View {child.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+    return (
+      <View style={styles.mobileTreeContainer}>
+        {/* Parent/Main Node */}
+        <View style={styles.mobileNodeContainer}>
+          {renderMobileNode(node, 0, 'root')}
         </View>
-      )}
-    </View>
-  );
-};
+
+        {/* Children Nodes with Horizontal Scroll Support */}
+        {isExpanded && hasChildren && (
+          <ScrollView
+            horizontal={true}
+            showsHorizontalScrollIndicator={true}
+            contentContainerStyle={styles.mobileChildrenContainer}
+            style={styles.horizontalScrollContainer}
+          >
+            <View style={styles.mobileChildrenRow}>
+              {node.children.map((child, index) => (
+                <View key={child.userId} style={styles.mobileChildNode}>
+                  {renderMobileNode(child, 1, index === 0 ? 'left' : 'right')}
+                </View>
+              ))}
+
+              {/* If only one child, show empty slot */}
+              {node.children.length === 1 && (
+                <View style={styles.mobileChildNode}>
+                  <View style={[styles.emptySlotNode, styles.mobileEmptySlot]}>
+                    <Text style={styles.emptySlotText}>Empty Slot</Text>
+                    <Text style={styles.emptySlotPosition}>
+                      {node.children[0].position === 'left' ? 'Right' : 'Left'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        )}
+
+        {/* Navigation buttons */}
+        {hasChildren && (
+          <View style={styles.mobileNavigation}>
+            {node.children.map(child => (
+              <TouchableOpacity
+                key={child.userId}
+                style={styles.mobileNavButton}
+                onPress={() => focusOnNode(child)}
+              >
+                <Text style={styles.mobileNavButtonText}>
+                  View {child.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
 
   // Render individual mobile node
-  const renderMobileNode = (node, level, position) => {
+  // Render individual mobile node
+const renderMobileNode = (node, level, position) => {
   const isExpanded = expandedNodes[node.userId];
   const isNodeHighlighted = isHighlighted(node);
   const isPathNode = isInSearchPath(node.userId);
@@ -448,16 +453,7 @@ const renderMobileTree = () => {
             </View>
           </View>
           
-          <View style={styles.metric}>
-            <View style={styles.metricRow}>
-              <Text style={[styles.metricLabel, level === 0 && { color: 'rgba(255,255,255,0.8)' }]}>
-                Bonus After Tax(tdy):
-              </Text>
-              <Text style={[styles.metricValue, level === 0 && { color: 'white' }]}>
-                ₹{formatNumber(node.bonusAfterTax || 0)}
-              </Text>
-            </View>
-          </View>
+          {/* Removed Bonus After Tax(tdy) metric */}
           
           <View style={styles.metric}>
             <View style={styles.metricRow}>
@@ -500,8 +496,21 @@ const renderMobileTree = () => {
           </View>
           <View style={styles.availablePositions}>
             {item.availablePositions.map(position => (
-              <View key={position} style={[styles.positionBadge, position === 'left' ? styles.leftBadge : styles.rightBadge]}>
-                <Text style={[styles.positionBadgeText, position === 'left' ? { color: '#2e7d32' } : { color: '#f57c00' }]}>
+              <View
+                key={position}
+                style={[
+                  styles.positionBadge,
+                  position === 'left' ? styles.leftBadge : styles.rightBadge,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.positionBadgeText,
+                    position === 'left'
+                      ? { color: '#2e7d32' }
+                      : { color: '#f57c00' },
+                  ]}
+                >
                   {position.charAt(0).toUpperCase() + position.slice(1)}
                 </Text>
               </View>
@@ -542,7 +551,9 @@ const renderMobileTree = () => {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3f51b5" />
-        <Text style={styles.loadingText}>Loading your network structure...</Text>
+        <Text style={styles.loadingText}>
+          Loading your network structure...
+        </Text>
       </SafeAreaView>
     );
   }
@@ -563,7 +574,9 @@ const renderMobileTree = () => {
     return (
       <SafeAreaView style={styles.emptyContainer}>
         <Icon name="account-tree" size={48} color="#9e9e9e" />
-        <Text style={styles.emptyText}>No network structure data available</Text>
+        <Text style={styles.emptyText}>
+          No network structure data available
+        </Text>
       </SafeAreaView>
     );
   }
@@ -574,16 +587,19 @@ const renderMobileTree = () => {
       <View style={styles.noteContainer}>
         <View style={styles.noteTextContainer}>
           <Text style={styles.noteText}>
-            For the best experience viewing the complete binary tree visualization, please open this website on a larger screen (like a laptop, desktop, or tablet).
+            For the best experience viewing the complete binary tree
+            visualization, please open this website on a larger screen (like a
+            laptop, desktop, or tablet).
           </Text>
           <View style={styles.websiteContainer}>
             <TouchableOpacity style={styles.urlButton} onPress={copyWebsiteURL}>
               <Icon name="link" size={14} color="#1976d2" />
-              <Text style={styles.urlText}>
-                {WEBSITE_URL}
-              </Text>
+              <Text style={styles.urlText}>{WEBSITE_URL}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.copyButton} onPress={copyWebsiteURL}>
+            <TouchableOpacity
+              style={styles.copyButton}
+              onPress={copyWebsiteURL}
+            >
               <Icon name="copy" size={12} color="white" />
               <Text style={styles.copyButtonText}>Copy URL</Text>
             </TouchableOpacity>
@@ -594,7 +610,9 @@ const renderMobileTree = () => {
       {/* Header */}
       <View style={styles.headerContainer}>
         <Text style={styles.title}>
-          {currentFocusNode?.name ? `Viewing: ${currentFocusNode.name}` : 'Network Structure'}
+          {currentFocusNode?.name
+            ? `Viewing: ${currentFocusNode.name}`
+            : 'Network Structure'}
         </Text>
         {currentFocusNode !== originalTreeData && (
           <TouchableOpacity style={styles.backButton} onPress={showFullTree}>
@@ -607,7 +625,8 @@ const renderMobileTree = () => {
       <View style={styles.dataNote}>
         <Icon name="schedule" size={14} color="#ff9800" />
         <Text style={styles.dataNoteText}>
-          Note: Earnings data reflects the most recent day's earnings and refreshes daily.
+          Note: Earnings data reflects the most recent day's earnings and
+          refreshes daily.
         </Text>
       </View>
 
@@ -682,7 +701,11 @@ const renderMobileTree = () => {
                 <Text style={styles.sortLabel}>Sort by:</Text>
                 <TouchableOpacity
                   style={styles.sortButton}
-                  onPress={() => setEmptySlotsSort(emptySlotsSort === 'level' ? 'name' : 'level')}
+                  onPress={() =>
+                    setEmptySlotsSort(
+                      emptySlotsSort === 'level' ? 'name' : 'level',
+                    )
+                  }
                 >
                   <Text style={styles.sortButtonText}>
                     {emptySlotsSort === 'level' ? 'Level' : 'Name (A-Z)'}
@@ -741,7 +764,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    marginTop: 35
+    marginTop: 35,
   },
   noteTextContainer: {
     flex: 1,
@@ -762,7 +785,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
     alignItems: 'center',
-    justifyContent: "center"
+    justifyContent: 'center',
   },
   urlButton: {
     flexDirection: 'row',
@@ -961,46 +984,46 @@ const styles = StyleSheet.create({
     showsVerticalScrollIndicator: true,
     showsHorizontalScrollIndicator: false,
   },
-  
+
   // ========== UPDATED MOBILE TREE STYLES ==========
   mobileTreeContainer: {
     padding: 16,
     alignItems: 'center',
     minHeight: screenHeight * 0.6,
   },
-  
+
   mobileNodeContainer: {
     width: '100%',
     alignItems: 'center',
     marginBottom: 30,
   },
-  
+
   horizontalScrollContainer: {
     width: '100%',
     marginBottom: 20,
   },
-  
+
   mobileChildrenContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-start', // Allow natural width
     alignItems: 'flex-start',
     paddingHorizontal: 16,
   },
-  
+
   mobileChildrenRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start', // Allow natural width
     alignItems: 'flex-start',
     paddingHorizontal: 8,
   },
-  
+
   mobileChildNode: {
     // Give more width to child nodes
     width: screenWidth * 0.7, // 70% of screen width for each child
     marginHorizontal: 12, // More spacing between children
     alignItems: 'center',
   },
-  
+
   // Parent node - full width
   mobileUserBox: {
     backgroundColor: 'white',
@@ -1013,17 +1036,17 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#e0e0e0',
     position: 'relative',
-    
+
     // Parent takes full available width
     width: screenWidth - 80,
     minHeight: 200, // Use minHeight instead of fixed height
-    
+
     // Perfect centering of ALL content
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
   },
-  
+
   // Children nodes - wider for more details
   mobileChildUserBox: {
     backgroundColor: 'white',
@@ -1036,17 +1059,17 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#e0e0e0',
     position: 'relative',
-    
+
     // Much wider for child nodes
     width: '100%', // Take full width of mobileChildNode container
     minHeight: 220, // Slightly taller for more content
-    
+
     // Perfect centering
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
   },
-  
+
   mobileEmptySlot: {
     backgroundColor: '#f5f5f5',
     borderColor: '#ddd',
@@ -1057,7 +1080,7 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 220,
   },
-  
+
   emptySlotNode: {
     backgroundColor: '#f9f9f9',
     borderRadius: 12,
@@ -1069,21 +1092,21 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 220,
   },
-  
+
   emptySlotText: {
     fontSize: 14,
     color: '#999',
     fontWeight: '500',
     textAlign: 'center',
   },
-  
+
   emptySlotPosition: {
     fontSize: 12,
     color: '#666',
     marginTop: 4,
     textAlign: 'center',
   },
-  
+
   // Content container - perfectly centered
   userDetails: {
     width: '100%',
@@ -1092,7 +1115,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 30, // More space for toggle button
   },
-  
+
   // User name - centered
   userName: {
     fontSize: 15, // Slightly larger
@@ -1104,7 +1127,7 @@ const styles = StyleSheet.create({
     ellipsizeMode: 'tail',
     width: '100%',
   },
-  
+
   // User ID - centered
   userId: {
     fontSize: 12, // Slightly larger
@@ -1116,14 +1139,14 @@ const styles = StyleSheet.create({
     ellipsizeMode: 'middle',
     width: '100%',
   },
-  
+
   // Metrics container - more space
   userMetrics: {
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   // Each metric row
   metric: {
     width: '100%',
@@ -1131,7 +1154,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   // Metric label and value - better spacing
   metricRow: {
     flexDirection: 'row',
@@ -1140,7 +1163,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 8,
   },
-  
+
   metricLabel: {
     fontSize: 11, // Larger text
     color: '#666',
@@ -1149,7 +1172,7 @@ const styles = StyleSheet.create({
     numberOfLines: 2, // Allow 2 lines for longer labels
     ellipsizeMode: 'tail',
   },
-  
+
   metricValue: {
     fontSize: 12, // Larger text
     fontWeight: '600',
@@ -1159,7 +1182,7 @@ const styles = StyleSheet.create({
     ellipsizeMode: 'tail',
     minWidth: 70, // More space for larger values
   },
-  
+
   // PERFECTLY CENTERED TOGGLE BUTTON
   toggleButton: {
     position: 'absolute',
@@ -1181,7 +1204,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     zIndex: 10,
   },
-  
+
   toggleButtonText: {
     fontSize: 20, // Larger icon
     color: '#3f51b5',
@@ -1189,7 +1212,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  
+
   // Node styling variants - enhanced colors
   rootNode: {
     backgroundColor: '#3f51b5',
@@ -1197,33 +1220,33 @@ const styles = StyleSheet.create({
     shadowColor: '#3f51b5',
     shadowOpacity: 0.3,
   },
-  
+
   leftNode: {
     borderColor: '#4caf50',
     backgroundColor: '#f1f8e9',
     shadowColor: '#4caf50',
     shadowOpacity: 0.2,
   },
-  
+
   rightNode: {
     borderColor: '#03a9f4',
     backgroundColor: '#e3f2fd',
     shadowColor: '#03a9f4',
     shadowOpacity: 0.2,
   },
-  
+
   highlighted: {
     borderColor: '#ff9800',
     backgroundColor: '#fff3e0',
     shadowColor: '#ff9800',
     shadowOpacity: 0.3,
   },
-  
+
   pathNode: {
     borderColor: '#90caf9',
     backgroundColor: '#e3f2fd',
   },
-  
+
   // Navigation buttons - wider for better touch
   mobileNavigation: {
     flexDirection: 'row',
@@ -1232,7 +1255,7 @@ const styles = StyleSheet.create({
     marginTop: 25,
     paddingHorizontal: 20,
   },
-  
+
   mobileNavButton: {
     backgroundColor: '#3f51b5',
     paddingHorizontal: 20,
@@ -1247,7 +1270,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 4,
   },
-  
+
   mobileNavButtonText: {
     color: 'white',
     fontSize: 13,
@@ -1256,9 +1279,9 @@ const styles = StyleSheet.create({
     numberOfLines: 2,
     ellipsizeMode: 'tail',
   },
-  
+
   // ========== END UPDATED MOBILE TREE STYLES ==========
-  
+
   // Modal styles
   modalOverlay: {
     flex: 1,

@@ -20,66 +20,85 @@ import styles from './SignupStyles';
 
 // Professional Eye Icons Component
 const EyeIcon = ({ visible, color = '#666' }) => (
-  <View style={{ width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}>
+  <View
+    style={{
+      width: 20,
+      height: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}
+  >
     {visible ? (
       // Eye Open Icon
       <View>
-        <View style={{
-          width: 18,
-          height: 12,
-          borderWidth: 1.5,
-          borderColor: color,
-          borderRadius: 9,
-          position: 'relative',
-        }} />
-        <View style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: color,
-          position: 'absolute',
-          top: 2,
-          left: 5,
-        }} />
-        <View style={{
-          width: 4,
-          height: 4,
-          borderRadius: 2,
-          backgroundColor: '#fff',
-          position: 'absolute',
-          top: 4,
-          left: 7,
-        }} />
+        <View
+          style={{
+            width: 18,
+            height: 12,
+            borderWidth: 1.5,
+            borderColor: color,
+            borderRadius: 9,
+            position: 'relative',
+          }}
+        />
+        <View
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: color,
+            position: 'absolute',
+            top: 2,
+            left: 5,
+          }}
+        />
+        <View
+          style={{
+            width: 4,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: '#fff',
+            position: 'absolute',
+            top: 4,
+            left: 7,
+          }}
+        />
       </View>
     ) : (
       // Eye Closed Icon
       <View>
-        <View style={{
-          width: 18,
-          height: 12,
-          borderWidth: 1.5,
-          borderColor: color,
-          borderRadius: 9,
-          position: 'relative',
-        }} />
-        <View style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: color,
-          position: 'absolute',
-          top: 2,
-          left: 5,
-        }} />
-        <View style={{
-          width: 20,
-          height: 2,
-          backgroundColor: color,
-          position: 'absolute',
-          top: 5,
-          left: -1,
-          transform: [{ rotate: '45deg' }],
-        }} />
+        <View
+          style={{
+            width: 18,
+            height: 12,
+            borderWidth: 1.5,
+            borderColor: color,
+            borderRadius: 9,
+            position: 'relative',
+          }}
+        />
+        <View
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: color,
+            position: 'absolute',
+            top: 2,
+            left: 5,
+          }}
+        />
+        <View
+          style={{
+            width: 20,
+            height: 2,
+            backgroundColor: color,
+            position: 'absolute',
+            top: 5,
+            left: -1,
+            transform: [{ rotate: '45deg' }],
+          }}
+        />
       </View>
     )}
   </View>
@@ -88,7 +107,7 @@ const EyeIcon = ({ visible, color = '#666' }) => (
 const SignupPage = () => {
   const navigation = useNavigation();
   const scrollViewRef = useRef(null);
-  
+
   // Create refs for form inputs to scroll to them
   const phoneInputRef = useRef(null);
   const emailInputRef = useRef(null);
@@ -98,7 +117,7 @@ const SignupPage = () => {
   const confirmPasswordInputRef = useRef(null);
   const referralInputRef = useRef(null);
   const otpInputRef = useRef(null);
-  
+
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -169,10 +188,10 @@ const SignupPage = () => {
   });
 
   // Function to scroll to first error
-  const scrollToError = (errorKey) => {
+  const scrollToError = errorKey => {
     setTimeout(() => {
       let targetRef = null;
-      
+
       switch (errorKey) {
         case 'phone':
           targetRef = phoneInputRef;
@@ -217,7 +236,7 @@ const SignupPage = () => {
             // Fallback if measureLayout fails
             console.log('Failed to measure layout, scrolling to top');
             scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-          }
+          },
         );
       }
     }, 100); // Small delay to ensure the error state is rendered
@@ -341,7 +360,8 @@ const SignupPage = () => {
     const newErrors = {};
 
     if (!referralStatus.isValid) {
-      newErrors.referralId = 'Please enter a valid referral ID with available slots';
+      newErrors.referralId =
+        'Please enter a valid referral ID with available slots';
       if (!firstError) firstError = 'referralId';
     }
 
@@ -443,7 +463,8 @@ const SignupPage = () => {
       }
     } catch (error) {
       console.error('Error:', error);
-      const apiError = error.response?.data?.message || 'An error occurred. Please try again.';
+      const apiError =
+        error.response?.data?.message || 'An error occurred. Please try again.';
       setErrors({ api: apiError });
       scrollToError('api');
     } finally {
@@ -517,7 +538,11 @@ const SignupPage = () => {
           >
             <Text
               style={[
-                { color: passwordRequirements.minLength ? '#fff' : 'rgba(236, 240, 241, 0.7)' },
+                {
+                  color: passwordRequirements.minLength
+                    ? '#fff'
+                    : 'rgba(236, 240, 241, 0.7)',
+                },
                 passwordRequirements.minLength && styles.requirementIconText,
               ]}
             >
@@ -542,7 +567,11 @@ const SignupPage = () => {
           >
             <Text
               style={[
-                { color: passwordRequirements.hasNumber ? '#fff' : 'rgba(236, 240, 241, 0.7)' },
+                {
+                  color: passwordRequirements.hasNumber
+                    ? '#fff'
+                    : 'rgba(236, 240, 241, 0.7)',
+                },
                 passwordRequirements.hasNumber && styles.requirementIconText,
               ]}
             >
@@ -567,8 +596,13 @@ const SignupPage = () => {
           >
             <Text
               style={[
-                { color: passwordRequirements.hasSpecialChar ? '#fff' : 'rgba(236, 240, 241, 0.7)' },
-                passwordRequirements.hasSpecialChar && styles.requirementIconText,
+                {
+                  color: passwordRequirements.hasSpecialChar
+                    ? '#fff'
+                    : 'rgba(236, 240, 241, 0.7)',
+                },
+                passwordRequirements.hasSpecialChar &&
+                  styles.requirementIconText,
               ]}
             >
               {passwordRequirements.hasSpecialChar ? '✓' : '○'}
@@ -601,7 +635,7 @@ const SignupPage = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
@@ -677,7 +711,10 @@ const SignupPage = () => {
               <Text style={styles.sectionTitle}>Location Details</Text>
 
               <View style={styles.twoColumn}>
-                <View style={[styles.formGroup, styles.columnItem]} ref={cityInputRef}>
+                <View
+                  style={[styles.formGroup, styles.columnItem]}
+                  ref={cityInputRef}
+                >
                   <Text style={styles.formLabel}>City</Text>
                   <TextInput
                     style={[
@@ -696,7 +733,10 @@ const SignupPage = () => {
                   )}
                 </View>
 
-                <View style={[styles.formGroup, styles.columnItem]} ref={stateInputRef}>
+                <View
+                  style={[styles.formGroup, styles.columnItem]}
+                  ref={stateInputRef}
+                >
                   <Text style={styles.formLabel}>State</Text>
                   <View
                     style={[
@@ -707,13 +747,17 @@ const SignupPage = () => {
                   >
                     <Picker
                       selectedValue={state}
-                      onValueChange={(itemValue) => setState(itemValue)}
+                      onValueChange={itemValue => setState(itemValue)}
                       enabled={!otpSent}
                       style={styles.picker}
                     >
                       <Picker.Item label="Select State" value="" />
                       {INDIAN_STATES.map((stateName, index) => (
-                        <Picker.Item key={index} label={stateName} value={stateName} />
+                        <Picker.Item
+                          key={index}
+                          label={stateName}
+                          value={stateName}
+                        />
                       ))}
                     </Picker>
                   </View>
@@ -729,13 +773,15 @@ const SignupPage = () => {
 
               <View style={styles.formGroup} ref={passwordInputRef}>
                 <Text style={styles.formLabel}>Password</Text>
-                <View style={[styles.passwordContainer, { position: 'relative' }]}>
+                <View
+                  style={[styles.passwordContainer, { position: 'relative' }]}
+                >
                   <TextInput
                     style={[
                       styles.formControl,
                       otpSent && styles.disabledInput,
                       errors.password && styles.errorInput,
-                      { paddingRight: 50 } // Add padding for the icon
+                      { paddingRight: 50 }, // Add padding for the icon
                     ]}
                     value={password}
                     onChangeText={handlePasswordChange}
@@ -755,9 +801,13 @@ const SignupPage = () => {
                     onPress={() => setShowPassword(!showPassword)}
                     disabled={otpSent}
                   >
-                    <EyeIcon 
-                      visible={showPassword} 
-                      color={otpSent ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.7)'} 
+                    <EyeIcon
+                      visible={showPassword}
+                      color={
+                        otpSent
+                          ? 'rgba(255, 255, 255, 0.3)'
+                          : 'rgba(255, 255, 255, 0.7)'
+                      }
                     />
                   </TouchableOpacity>
                 </View>
@@ -774,13 +824,15 @@ const SignupPage = () => {
 
               <View style={styles.formGroup} ref={confirmPasswordInputRef}>
                 <Text style={styles.formLabel}>Confirm Password</Text>
-                <View style={[styles.passwordContainer, { position: 'relative' }]}>
+                <View
+                  style={[styles.passwordContainer, { position: 'relative' }]}
+                >
                   <TextInput
                     style={[
                       styles.formControl,
                       otpSent && styles.disabledInput,
                       errors.confirmPassword && styles.errorInput,
-                      { paddingRight: 50 } // Add padding for the icon
+                      { paddingRight: 50 }, // Add padding for the icon
                     ]}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
@@ -800,14 +852,20 @@ const SignupPage = () => {
                     onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                     disabled={otpSent}
                   >
-                    <EyeIcon 
-                      visible={showConfirmPassword} 
-                      color={otpSent ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.7)'} 
+                    <EyeIcon
+                      visible={showConfirmPassword}
+                      color={
+                        otpSent
+                          ? 'rgba(255, 255, 255, 0.3)'
+                          : 'rgba(255, 255, 255, 0.7)'
+                      }
                     />
                   </TouchableOpacity>
                 </View>
                 {errors.confirmPassword && (
-                  <Text style={styles.errorMessage}>⚠ {errors.confirmPassword}</Text>
+                  <Text style={styles.errorMessage}>
+                    ⚠ {errors.confirmPassword}
+                  </Text>
                 )}
               </View>
 
@@ -827,7 +885,7 @@ const SignupPage = () => {
                     referralStatus.isValid && styles.validInput,
                   ]}
                   value={referralId}
-                  onChangeText={(text) => {
+                  onChangeText={text => {
                     setReferralId(text);
                     debouncedCheckReferral(text);
                   }}
@@ -838,18 +896,32 @@ const SignupPage = () => {
                 {referralStatus.isChecking && (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="small" color="#4CAF50" />
-                    <Text style={styles.loadingText}>Checking referral ID...</Text>
+                    <Text style={styles.loadingText}>
+                      Checking referral ID...
+                    </Text>
                   </View>
                 )}
                 {referralStatus.message && !referralStatus.isChecking && (
-                  <Text
-                    style={[
-                      styles.referralMessage,
-                      referralStatus.isValid ? styles.validMessage : styles.errorMessage,
-                    ]}
-                  >
-                    {referralStatus.isValid ? '✓' : '⚠'} {referralStatus.message}
-                  </Text>
+                  <View>
+                    <Text
+                      style={[
+                        styles.referralMessage,
+                        referralStatus.isValid
+                          ? styles.validMessage
+                          : styles.errorMessage,
+                      ]}
+                    >
+                      {referralStatus.isValid ? '✓' : '⚠'}{' '}
+                      {referralStatus.message}
+                    </Text>
+                    {referralStatus.slotsAvailable && (
+                      <Text style={styles.slotsAvailableText}>
+                        {referralStatus.slotsAvailable === 'both'
+                          ? 'Both slots are available'
+                          : 'Right slot is available'}
+                      </Text>
+                    )}
+                  </View>
                 )}
                 {referralStatus.referrerName && (
                   <Text style={styles.referrerName}>
@@ -875,7 +947,7 @@ const SignupPage = () => {
                       errors.otp && styles.errorInput,
                     ]}
                     value={otp}
-                    onChangeText={(text) => setOtp(text.replace(/\D/g, ''))}
+                    onChangeText={text => setOtp(text.replace(/\D/g, ''))}
                     placeholder="Enter 6-digit OTP"
                     placeholderTextColor="rgba(255, 255, 255, 0.5)"
                     keyboardType="number-pad"
@@ -907,7 +979,10 @@ const SignupPage = () => {
             <View style={styles.formActions}>
               {!otpSent ? (
                 <TouchableOpacity
-                  style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                  style={[
+                    styles.primaryButton,
+                    isLoading && styles.disabledButton,
+                  ]}
                   onPress={handleSendOtp}
                   disabled={isLoading}
                 >
@@ -919,7 +994,10 @@ const SignupPage = () => {
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                  style={[
+                    styles.primaryButton,
+                    isLoading && styles.disabledButton,
+                  ]}
                   onPress={handleNext}
                   disabled={isLoading}
                 >

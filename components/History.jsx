@@ -32,6 +32,16 @@ const UserGameHistory = () => {
     lastError: null
   });
 
+  // Helper function to format tokens to 2 decimal places
+  const formatTokens = (tokens) => {
+    return typeof tokens === 'number' ? tokens.toFixed(2) : parseFloat(tokens || 0).toFixed(2);
+  };
+
+  // Helper function to format currency to 2 decimal places
+  const formatCurrency = (amount) => {
+    return typeof amount === 'number' ? amount.toFixed(2) : parseFloat(amount || 0).toFixed(2);
+  };
+
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -331,7 +341,7 @@ const UserGameHistory = () => {
           <Text style={styles.dateText}>{game.date}</Text>
         </View>
         <View style={styles.amountContainer}>
-          <Text style={styles.amountText}>₹{game.amount}</Text>
+          <Text style={styles.amountText}>₹{formatCurrency(game.amount)}</Text>
         </View>
       </View>
       
@@ -421,7 +431,7 @@ const UserGameHistory = () => {
         >
           <Text style={styles.headerTitle}>Game History</Text>
           <View style={styles.totalAmountHeaderContainer}>
-            <Text style={styles.totalAmountHeader}>₹{totalAmount}</Text>
+            <Text style={styles.totalAmountHeader}>₹{formatCurrency(totalAmount)}</Text>
           </View>
           <Text style={styles.totalAmountLabel}>Total Amount Played</Text>
         </LinearGradient>
@@ -438,7 +448,7 @@ const UserGameHistory = () => {
           </View>
           <View style={styles.tokensContainer}>
             <Icon name="monetization-on" size={20} color="#4CAF50" />
-            <Text style={styles.tokensText}>{userData?.tokens || 0}</Text>
+            <Text style={styles.tokensText}>{formatTokens(userData?.tokens || 0)}</Text>
           </View>
         </View>
 

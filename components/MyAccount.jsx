@@ -208,6 +208,10 @@ const MyAccount = ({ navigation }) => {
     navigation.navigate('TransactionHistory');
   };
 
+  const handleInGameTransactionHistory = ()=>{
+    navigation.navigate('IngameTransaction');
+  }
+
   const handleBankDetails = () => {
     navigation.navigate('BankDetails');
   };
@@ -505,6 +509,12 @@ const MyAccount = ({ navigation }) => {
         <TouchableOpacity style={styles.transactionButton} onPress={handleTransactionHistory}>
           <Icon name="history" size={20} color="#007bff" style={styles.buttonIcon} />
           <Text style={styles.transactionButtonText}>Transaction History</Text>
+        </TouchableOpacity>
+
+        {/* In Game Transaction History Button */}
+        <TouchableOpacity style={styles.transactionButton} onPress={handleInGameTransactionHistory}>
+          <Icon name="history" size={20} color="#007bff" style={styles.buttonIcon} />
+          <Text style={styles.transactionButtonText}>Token In-Game Transactions History</Text>
         </TouchableOpacity>
 
         {/* NEW: Wins Button */}

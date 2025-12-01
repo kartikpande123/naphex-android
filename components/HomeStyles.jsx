@@ -18,6 +18,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     zIndex: 1000,
     position: 'relative',
+    paddingTop:70
   },
   headerContent: {
     flexDirection: 'row',

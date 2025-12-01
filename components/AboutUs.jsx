@@ -47,7 +47,7 @@ const CustomGradient = ({ colors, style, children, direction = 'vertical' }) => 
   );
 };
 
-// Custom Icons
+// Custom Icons (simplified version using Unicode/Text for better performance)
 const CustomIcon = ({ name, size = 24, color = 'white' }) => {
   const iconStyle = {
     width: size,
@@ -60,353 +60,51 @@ const CustomIcon = ({ name, size = 24, color = 'white' }) => {
     switch (name) {
       case 'users':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.4,
-              height: size * 0.4,
-              borderRadius: size * 0.2,
-              borderWidth: 2,
-              borderColor: color,
-              marginBottom: 2,
-            }} />
-            <View style={{
-              width: size * 0.8,
-              height: size * 0.3,
-              borderTopLeftRadius: size * 0.4,
-              borderTopRightRadius: size * 0.4,
-              borderWidth: 2,
-              borderColor: color,
-              borderBottomWidth: 0,
-            }} />
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>👥</Text>
         );
       case 'shield':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.7,
-              height: size * 0.8,
-              borderWidth: 2,
-              borderColor: color,
-              borderTopLeftRadius: size * 0.35,
-              borderTopRightRadius: size * 0.35,
-              borderBottomLeftRadius: size * 0.1,
-              borderBottomRightRadius: size * 0.1,
-              position: 'relative',
-            }}>
-              <View style={{
-                position: 'absolute',
-                top: size * 0.15,
-                left: size * 0.15,
-                width: size * 0.15,
-                height: size * 0.25,
-                backgroundColor: color,
-              }} />
-            </View>
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>🛡️</Text>
         );
       case 'award':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.6,
-              height: size * 0.6,
-              borderRadius: size * 0.3,
-              borderWidth: 2,
-              borderColor: color,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}>
-              <View style={{
-                width: size * 0.2,
-                height: size * 0.2,
-                backgroundColor: color,
-              }} />
-            </View>
-            <View style={{
-              position: 'absolute',
-              bottom: 0,
-              left: size * 0.35,
-              width: size * 0.3,
-              height: size * 0.25,
-              backgroundColor: color,
-            }} />
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>🏆</Text>
         );
       case 'check-circle':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.9,
-              height: size * 0.9,
-              borderRadius: size * 0.45,
-              borderWidth: 2,
-              borderColor: color,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}>
-              <View style={{
-                width: size * 0.3,
-                height: size * 0.15,
-                borderBottomWidth: 2,
-                borderRightWidth: 2,
-                borderColor: color,
-                transform: [{ rotate: '45deg' }],
-                marginTop: -size * 0.05,
-              }} />
-            </View>
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>✅</Text>
         );
       case 'star':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: 0,
-              height: 0,
-              borderLeftWidth: size * 0.15,
-              borderRightWidth: size * 0.15,
-              borderBottomWidth: size * 0.25,
-              borderStyle: 'solid',
-              backgroundColor: 'transparent',
-              borderLeftColor: 'transparent',
-              borderRightColor: 'transparent',
-              borderBottomColor: color,
-            }} />
-            <View style={{
-              position: 'absolute',
-              top: size * 0.15,
-              width: 0,
-              height: 0,
-              borderLeftWidth: size * 0.15,
-              borderRightWidth: size * 0.15,
-              borderTopWidth: size * 0.25,
-              borderStyle: 'solid',
-              backgroundColor: 'transparent',
-              borderLeftColor: 'transparent',
-              borderRightColor: 'transparent',
-              borderTopColor: color,
-            }} />
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>⭐</Text>
         );
       case 'mail':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.8,
-              height: size * 0.6,
-              borderWidth: 2,
-              borderColor: color,
-              borderRadius: 4,
-            }} />
-            <View style={{
-              position: 'absolute',
-              top: size * 0.2,
-              left: size * 0.1,
-              width: size * 0.4,
-              height: size * 0.3,
-              borderRightWidth: 2,
-              borderBottomWidth: 2,
-              borderColor: color,
-              transform: [{ rotate: '45deg' }],
-            }} />
-            <View style={{
-              position: 'absolute',
-              top: size * 0.2,
-              right: size * 0.1,
-              width: size * 0.4,
-              height: size * 0.3,
-              borderLeftWidth: 2,
-              borderBottomWidth: 2,
-              borderColor: color,
-              transform: [{ rotate: '-45deg' }],
-            }} />
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>📧</Text>
         );
       case 'lock':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.5,
-              height: size * 0.4,
-              borderTopLeftRadius: size * 0.25,
-              borderTopRightRadius: size * 0.25,
-              borderWidth: 2,
-              borderColor: color,
-              borderBottomWidth: 0,
-              marginBottom: 2,
-            }} />
-            <View style={{
-              width: size * 0.7,
-              height: size * 0.4,
-              backgroundColor: color,
-              borderRadius: 4,
-            }} />
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>🔒</Text>
         );
       case 'file-text':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.7,
-              height: size * 0.85,
-              borderWidth: 2,
-              borderColor: color,
-              borderRadius: 3,
-              position: 'relative',
-            }}>
-              <View style={{
-                position: 'absolute',
-                top: size * 0.15,
-                left: size * 0.1,
-                right: size * 0.1,
-                height: 2,
-                backgroundColor: color,
-              }} />
-              <View style={{
-                position: 'absolute',
-                top: size * 0.25,
-                left: size * 0.1,
-                right: size * 0.2,
-                height: 2,
-                backgroundColor: color,
-              }} />
-              <View style={{
-                position: 'absolute',
-                top: size * 0.35,
-                left: size * 0.1,
-                right: size * 0.15,
-                height: 2,
-                backgroundColor: color,
-              }} />
-            </View>
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>📄</Text>
         );
       case 'help-circle':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.9,
-              height: size * 0.9,
-              borderRadius: size * 0.45,
-              borderWidth: 2,
-              borderColor: color,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}>
-              <Text style={{
-                fontSize: size * 0.5,
-                fontWeight: 'bold',
-                color: color,
-              }}>?</Text>
-            </View>
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>❓</Text>
         );
       case 'building':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.8,
-              height: size * 0.6,
-              borderWidth: 2,
-              borderColor: color,
-              borderRadius: 2,
-            }} />
-            <View style={{
-              position: 'absolute',
-              top: size * 0.15,
-              left: size * 0.2,
-              width: size * 0.1,
-              height: size * 0.1,
-              backgroundColor: color,
-            }} />
-            <View style={{
-              position: 'absolute',
-              top: size * 0.15,
-              right: size * 0.2,
-              width: size * 0.1,
-              height: size * 0.1,
-              backgroundColor: color,
-            }} />
-            <View style={{
-              position: 'absolute',
-              bottom: size * 0.15,
-              left: size * 0.2,
-              width: size * 0.1,
-              height: size * 0.1,
-              backgroundColor: color,
-            }} />
-            <View style={{
-              position: 'absolute',
-              bottom: size * 0.15,
-              right: size * 0.2,
-              width: size * 0.1,
-              height: size * 0.1,
-              backgroundColor: color,
-            }} />
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>🏢</Text>
         );
       case 'map-pin':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.6,
-              height: size * 0.6,
-              borderRadius: size * 0.3,
-              borderWidth: 2,
-              borderColor: color,
-            }} />
-            <View style={{
-              position: 'absolute',
-              bottom: -size * 0.1,
-              left: size * 0.2,
-              width: size * 0.2,
-              height: size * 0.3,
-              backgroundColor: color,
-              borderBottomLeftRadius: size * 0.1,
-              borderBottomRightRadius: size * 0.1,
-            }} />
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>📍</Text>
         );
       case 'phone':
         return (
-          <View style={iconStyle}>
-            <View style={{
-              width: size * 0.6,
-              height: size * 0.8,
-              borderWidth: 2,
-              borderColor: color,
-              borderRadius: size * 0.1,
-              position: 'relative',
-            }}>
-              <View style={{
-                position: 'absolute',
-                top: size * 0.1,
-                left: size * 0.2,
-                right: size * 0.2,
-                height: 2,
-                backgroundColor: color,
-              }} />
-              <View style={{
-                position: 'absolute',
-                top: size * 0.2,
-                left: size * 0.25,
-                right: size * 0.25,
-                height: size * 0.3,
-                borderWidth: 2,
-                borderColor: color,
-                borderRadius: 2,
-              }} />
-              <View style={{
-                position: 'absolute',
-                bottom: size * 0.1,
-                left: size * 0.25,
-                right: size * 0.25,
-                height: size * 0.1,
-                borderRadius: size * 0.05,
-                backgroundColor: color,
-              }} />
-            </View>
-          </View>
+          <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>📞</Text>
         );
       default:
         return (
@@ -472,17 +170,6 @@ const AboutPage = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar backgroundColor="#0f172a" barStyle="light-content" />
       
-      {/* GSTN Number Bar */}
-      <CustomGradient
-        colors={['rgba(30, 58, 138, 0.8)', 'rgba(6, 182, 212, 0.8)']}
-        style={styles.gstnBar}
-      >
-        <View style={styles.gstnContent}>
-          <CustomIcon name="building" size={18} color="#22d3ee" />
-          <Text style={styles.gstnText}>GSTN: 29AAWFN6270D1ZR</Text>
-        </View>
-      </CustomGradient>
-      
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -501,16 +188,26 @@ const AboutPage = ({ navigation }) => {
                 colors={['#3b82f6', '#06b6d4']}
                 style={styles.logoContainer}
               >
-                <Image 
-                  source={require('../images/logo-1.png')} 
-                  style={styles.logo}
-                  resizeMode="cover"
-                />
+                <CustomIcon name="shield" size={40} color="white" />
               </CustomGradient>
               
-              <Text style={styles.companyText}>
-                NADAKATTI ENTERPRISES PRESENTS
+              <Text style={styles.registrationText}>
+                Registered Under Government of India
               </Text>
+              
+              <View style={styles.registrationDetails}>
+                <View style={styles.registrationRow}>
+                  <Text style={styles.registrationText}>
+                    Registration No: 29AAWFN6270D1ZR
+                  </Text>
+                </View>
+                <Text style={styles.legalText}>
+                  Legal Name: NADAKATTI ENTERPRISES
+                </Text>
+                <Text style={styles.addressText}>
+                  Narendra cross, Dharwad-580005, Karnataka, Mob: 7892739656
+                </Text>
+              </View>
               
               <Text style={styles.heroTitle}>
                 Naphex
@@ -542,20 +239,27 @@ const AboutPage = ({ navigation }) => {
             
             <View style={styles.textContent}>
               <Text style={styles.paragraph}>
-                Welcome to Naphex, a premium online gaming platform brought to you by Nadakatti Enterprises. We offer a wide range of gaming options to users including, online slots, and sports gaming that you can enjoy using your device such as mobile and laptop.
+                Welcome to Naphex, a premium online gaming platform brought to you by Nadakatti Enterprises. 
+                We offer a wide range of gaming options to users including, online slots, 
+                and sports gaming that you can enjoy using your device such as mobile and laptop.
               </Text>
               
               <Text style={styles.paragraph}>
-                As a sub-product of Nadakatti Enterprises, Naphex upholds the same standards of excellence and innovation. We offer live gaming options on different sports and games . At Naphex, we provide the best gaming experience to users and the chance to test their skills and win real rewards.
+                As a sub-product of Nadakatti Enterprises, Naphex upholds the same standards of excellence 
+                and innovation. We offer live gaming options on different sports and games. 
+                At Naphex, we provide the best gaming experience to users and the chance to test their skills and win real rewards.
               </Text>
               
               <Text style={[styles.paragraph, { marginBottom: 0 }]}>
-                Backed by Nadakatti Enterprises reputation for quality and reliability, we ensure that all of your personal and financial data is safe and secured. We use industry-standard encryption and follow strict safety protocols so that users can experience worry-free gaming and focus more on their games.
+                Backed by Nadakatti Enterprises reputation for quality and reliability, we ensure that all 
+                of your personal and financial data is safe and secured. We use industry-standard encryption 
+                and follow strict safety protocols so that users can experience worry-free gaming and focus 
+                more on their games.
               </Text>
             </View>
           </CustomGradient>
 
-          {/* Features Section */}
+          {/* Features Grid */}
           <View style={styles.featuresContainer}>
             {/* Fairness and Security */}
             <CustomGradient
@@ -608,7 +312,7 @@ const AboutPage = ({ navigation }) => {
               
               <View style={styles.textContent}>
                 <Text style={styles.featureParagraph}>
-                  Here, you get the gaming environment where you can place your stakes with complete safety at all times 
+                  Here, you get the gaming environment where you can test your skills with complete safety at all times 
                   and have confidence in the integrity of all the games.
                 </Text>
                 
@@ -638,6 +342,56 @@ const AboutPage = ({ navigation }) => {
               where gaming excellence meets absolute security, upholding the values and standards of our parent company.
             </Text>
           </CustomGradient>
+
+          {/* Support Section */}
+          <CustomGradient
+            colors={['rgba(30, 58, 138, 0.4)', 'rgba(15, 23, 42, 0.6)']}
+            style={styles.supportCard}
+          >
+            <View style={styles.supportContent}>
+              <View style={styles.supportInfo}>
+                <CustomGradient
+                  colors={['#3b82f6', '#06b6d4']}
+                  style={styles.mailIconContainer}
+                >
+                  <CustomIcon name="mail" size={32} color="white" />
+                </CustomGradient>
+                <View style={styles.supportText}>
+                  <Text style={styles.supportTitle}>Need Support?</Text>
+                  <Text style={styles.supportSubtitle}>We're here to help with any questions you might have</Text>
+                </View>
+              </View>
+              
+              <View style={styles.contactSection}>
+                <Text style={styles.contactLabel}>Contact our support team:</Text>
+                <TouchableOpacity 
+                  onPress={handleEmailPress}
+                  activeOpacity={0.8}
+                >
+                  <CustomGradient
+                    colors={['#2563eb', '#0891b2']}
+                    style={styles.emailButton}
+                  >
+                    <Text style={styles.emailButtonText}>naphex24@outlook.com</Text>
+                  </CustomGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </CustomGradient>
+
+          {/* Disclaimer */}
+          <View style={styles.disclaimerCard}>
+            <View style={styles.disclaimerContent}>
+              <CustomIcon name="lock" size={20} color="#60a5fa" />
+              <View style={[styles.disclaimerText, { marginLeft: 12 }]}>
+                <Text style={styles.disclaimerTitle}>Important Notice</Text>
+                <Text style={styles.disclaimerBody}>
+                  The data on this page might get updated from time to time. We advise you to be vigilant and 
+                  inform yourself about any changes from time to time with privacy and confidentiality policies in mind.
+                </Text>
+              </View>
+            </View>
+          </View>
 
           {/* Contact Us Section */}
           <CustomGradient
@@ -693,116 +447,39 @@ const AboutPage = ({ navigation }) => {
             </View>
           </CustomGradient>
 
-          {/* Support Section */}
-          <CustomGradient
-            colors={['rgba(30, 58, 138, 0.4)', 'rgba(15, 23, 42, 0.6)']}
-            style={styles.supportCard}
-          >
-            <View style={styles.supportContent}>
-              <View style={styles.supportInfo}>
-                <CustomGradient
-                  colors={['#3b82f6', '#06b6d4']}
-                  style={styles.mailIconContainer}
-                >
-                  <CustomIcon name="mail" size={32} color="white" />
-                </CustomGradient>
-                <View style={styles.supportText}>
-                  <Text style={styles.supportTitle}>Need Support?</Text>
-                  <Text style={styles.supportSubtitle}>We're here to help with any questions you might have</Text>
-                </View>
-              </View>
-              
-              <View style={styles.contactSection}>
-                <Text style={styles.contactLabel}>Contact our support team:</Text>
-                <TouchableOpacity 
-                  onPress={handleEmailPress}
-                  activeOpacity={0.8}
-                >
-                  <CustomGradient
-                    colors={['#2563eb', '#0891b2']}
-                    style={styles.emailButton}
-                  >
-                    <CustomIcon name="mail" size={20} color="white" />
-                    <Text style={styles.emailButtonText}>naphex24@outlook.com</Text>
-                  </CustomGradient>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </CustomGradient>
-
-          {/* Disclaimer */}
-          <View style={styles.disclaimerCard}>
-            <View style={styles.disclaimerContent}>
-              <CustomIcon name="lock" size={20} color="#60a5fa" />
-              <View style={[styles.disclaimerText, { marginLeft: 12 }]}>
-                <Text style={styles.disclaimerTitle}>Important Notice</Text>
-                <Text style={styles.disclaimerBody}>
-                  The data on this page might get updated from time to time. We advise you to be vigilant and 
-                  inform yourself about any changes from time to time with privacy and confidentiality policies in mind.
-                </Text>
-              </View>
-            </View>
-          </View>
-
           {/* Enhanced Footer */}
           <CustomGradient
             colors={['rgba(15, 23, 42, 0.8)', 'rgba(30, 58, 138, 0.6)']}
             style={styles.footer}
           >
-            {/* Important Links Section */}
-            <View style={styles.footerLinksSection}>
-              <Text style={styles.footerLinksTitle}>Important Links</Text>
-              <Text style={styles.footerLinksSubtitle}>
-                Access our legal documents and support resources
-              </Text>
-              
-              <View style={styles.footerLinksGrid}>
-                {footerLinks.map((link, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => handleLinkPress(link.route)}
-                    activeOpacity={0.8}
-                    style={styles.footerLinkCard}
-                  >
-                    <CustomGradient
-                      colors={['rgba(59, 130, 246, 0.3)', 'rgba(6, 182, 212, 0.3)']}
-                      style={styles.footerLinkCardInner}
-                    >
-                      <View style={styles.footerLinkIcon}>
-                        <CustomIcon name={link.icon} size={20} color="#60a5fa" />
-                      </View>
-                      <View style={styles.footerLinkContent}>
-                        <Text style={styles.footerLinkTitle}>{link.title}</Text>
-                        <Text style={styles.footerLinkDescription}>{link.description}</Text>
-                      </View>
-                    </CustomGradient>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Divider */}
-            <View style={styles.footerDivider} />
-
             {/* Copyright Section */}
             <View style={styles.copyrightSection}>
-              <CustomGradient
-                colors={['#3b82f6', '#06b6d4']}
-                style={styles.copyrightLogoContainer}
-              >
-                <Image 
-                  source={require('../images/logo-1.png')} 
-                  style={styles.copyrightLogo}
-                  resizeMode="cover"
-                />
-              </CustomGradient>
-              
               <Text style={styles.copyrightText}>
-                © 2025/2026 NADAKATTI ENTERPRISES
+                © 2025/2026 NADAKATTI ENTERPRISES. All rights reserved.
               </Text>
-              <Text style={styles.copyrightSubtext}>
-                All rights reserved. Naphex is a premium gaming platform.
-              </Text>
+            </View>
+
+            {/* Footer Links */}
+            <View style={styles.footerLinks}>
+              <TouchableOpacity onPress={() => handleLinkPress('TermsAndConditions')}>
+                <Text style={styles.footerLink}>Terms & Conditions</Text>
+              </TouchableOpacity>
+              <Text style={styles.footerSeparator}>|</Text>
+              <TouchableOpacity onPress={() => handleLinkPress('KycPolicy')}>
+                <Text style={styles.footerLink}>KYC Policy</Text>
+              </TouchableOpacity>
+              <Text style={styles.footerSeparator}>|</Text>
+              <TouchableOpacity onPress={() => handleLinkPress('PrivacyPolicy')}>
+                <Text style={styles.footerLink}>Privacy Policy</Text>
+              </TouchableOpacity>
+              <Text style={styles.footerSeparator}>|</Text>
+              <TouchableOpacity onPress={() => handleLinkPress('GameRules')}>
+                <Text style={styles.footerLink}>Game Rules</Text>
+              </TouchableOpacity>
+              <Text style={styles.footerSeparator}>|</Text>
+              <TouchableOpacity onPress={() => handleLinkPress('Faqs')}>
+                <Text style={styles.footerLink}>FAQs</Text>
+              </TouchableOpacity>
             </View>
           </CustomGradient>
         </View>
@@ -816,30 +493,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f172a',
   },
-  // GSTN Bar Styles
-  gstnBar: {
-    paddingTop: 40, // Added margin from top for mobile status bar
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(59, 130, 246, 0.3)',
-  },
-  gstnContent: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gstnText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 14,
-    marginLeft: 8,
-    letterSpacing: 0.5,
-  },
   scrollView: {
     flex: 1,
   },
   heroSection: {
-    minHeight: height * 0.4,
+    minHeight: height * 0.5,
     position: 'relative',
   },
   heroOverlay: {
@@ -851,6 +509,7 @@ const styles = StyleSheet.create({
   },
   heroContent: {
     alignItems: 'center',
+    width: '100%',
   },
   logoContainer: {
     width: 80,
@@ -858,24 +517,41 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
-  logo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  companyText: {
-    fontSize: 14,
+  registrationText: {
+    fontSize: 18,
     fontWeight: '600',
     color: '#22d3ee',
     marginBottom: 8,
     textAlign: 'center',
+  },
+  registrationDetails: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  registrationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  legalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#e2e8f0',
+    textAlign: 'center',
+    maxWidth: width - 40,
   },
   heroTitle: {
     fontSize: 48,
@@ -1134,105 +810,31 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(59, 130, 246, 0.3)',
-  },
-  footerLinksSection: {
-    marginBottom: 24,
-  },
-  footerLinksTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  footerLinksSubtitle: {
-    fontSize: 14,
-    color: '#e2e8f0',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  footerLinksGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  footerLinkCard: {
-    width: width < 400 ? '100%' : '48%',
-    marginBottom: 12,
-  },
-  footerLinkCardInner: {
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.4)',
-    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  footerLinkIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  footerLinkContent: {
-    flex: 1,
-  },
-  footerLinkTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
-    marginBottom: 2,
-  },
-  footerLinkDescription: {
-    fontSize: 12,
-    color: '#94a3b8',
-  },
-  footerDivider: {
-    height: 1,
-    backgroundColor: 'rgba(59, 130, 246, 0.3)',
-    marginVertical: 24,
   },
   copyrightSection: {
-    alignItems: 'center',
-  },
-  copyrightLogoContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  copyrightLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    marginBottom: 16,
   },
   copyrightText: {
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
     textAlign: 'center',
-    marginBottom: 4,
   },
-  copyrightSubtext: {
-    fontSize: 12,
-    color: '#94a3b8',
-    textAlign: 'center',
+  footerLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  footerLink: {
+    fontSize: 14,
+    color: '#e2e8f0',
+    paddingHorizontal: 8,
+  },
+  footerSeparator: {
+    fontSize: 14,
+    color: '#e2e8f0',
   },
 });
 
