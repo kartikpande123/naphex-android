@@ -2,49 +2,11 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
-
-/**
- * This is the configuration block to customize your React Native Android app.
- * By default you don't need to apply any configuration, just uncomment the lines you need.
- */
 react {
-    /* Folders */
-    //   The root of your project, i.e. where "package.json" lives. Default is '../..'
-    // root = file("../../")
-    //   The folder where the react-native NPM package is. Default is ../../node_modules/react-native
-    // reactNativeDir = file("../../node_modules/react-native")
-    //   The folder where the react-native Codegen package is. Default is ../../node_modules/@react-native/codegen
-    // codegenDir = file("../../node_modules/@react-native/codegen")
-    //   The cli.js file which is the React Native CLI entrypoint. Default is ../../node_modules/react-native/cli.js
-    // cliFile = file("../../node_modules/react-native/cli.js")
-
-    /* Variants */
-    // debuggableVariants = ["liteDebug", "prodDebug"]
-
-    /* Bundling */
-    // nodeExecutableAndArgs = ["node"]
-    // bundleCommand = "ram-bundle"
-    // bundleConfig = file(../rn-cli.config.js)
-    // bundleAssetName = "MyApplication.android.bundle"
-    // entryFile = file("../js/MyApplication.android.js")
-    // extraPackagerArgs = []
-
-    /* Hermes Commands */
-    // hermesCommand = "$rootDir/my-custom-hermesc/bin/hermesc"
-    // hermesFlags = ["-O", "-output-source-map"]
-
-    /* Autolinking */
     autolinkLibrariesWithApp()
 }
 
-/**
- * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
- */
 def enableProguardInReleaseBuilds = false
-
-/**
- * The preferred build flavor of JavaScriptCore (JSC)
- */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
@@ -53,6 +15,7 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.naphex"
+    
     defaultConfig {
         applicationId "com.naphex"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -64,9 +27,21 @@ android {
             abiFilters "armeabi-v7a", "arm64-v8a"
         }
 
-        // 👇 Fix react-native-camera flavor issue
         missingDimensionStrategy "react-native-camera", "general"
     }
+    
+    packagingOptions {
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libjsc.so'
+        pickFirst '**/libfbjni.so'
+        pickFirst '**/libhermes.so'
+        pickFirst '**/libreanimated.so'
+        pickFirst '**/libreact_nativemodule_core.so'
+        pickFirst '**/libturbomodulejsijni.so'
+        pickFirst '**/libreactnativeblob.so'
+        pickFirst '**/libreactnativejni.so'
+    }
+    
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -83,20 +58,28 @@ android {
             }
         }
     }
+    
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
+            minifyEnabled false
+            shrinkResources false
             signingConfig signingConfigs.release
-            minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+    
+    // REMOVE or COMMENT OUT externalNativeBuild - let React Native handle it
+    // externalNativeBuild {
+    //     cmake {
+    //         version "3.22.1"
+    //     }
+    // }
 }
 
 dependencies {
-    // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
     if (hermesEnabled.toBoolean()) {
@@ -106,5 +89,4 @@ dependencies {
     }
 }
 
-// ADD THIS LINE AT THE VERY END - This is what you're missing!
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")

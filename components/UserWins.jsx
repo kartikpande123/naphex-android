@@ -829,6 +829,7 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     marginBottom: 8,
+    color: '#000000'
   },
   inputHelp: {
     fontSize: 12,

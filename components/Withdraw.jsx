@@ -1008,6 +1008,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "white",
     paddingRight: 70,
+    color: '#000000'
   },
   disabledInput: {
     backgroundColor: "#f9fafb",
