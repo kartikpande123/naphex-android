@@ -12,6 +12,8 @@ import {
   Platform,
   BackHandler,
   Modal,
+  TextInput,
+  Linking,
 } from 'react-native';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
@@ -20,6 +22,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import Clipboard from '@react-native-clipboard/clipboard';
+import { EventSourcePolyfill } from 'event-source-polyfill';
 import API_BASE_URL from './ApiConfig';
 import styles from './UserKycStyles';
 
@@ -138,11 +141,18 @@ const UserKyc = () => {
   const [showSelfiePreview, setShowSelfiePreview] = useState(false);
   const [tempSelfieUri, setTempSelfieUri] = useState(null);
 
-  // KYC State - Added selfie
+  // PAN Number state
+  const [panNumber, setPanNumber] = useState('');
+  const [panNumberError, setPanNumberError] = useState('');
+  const [isPanChecking, setIsPanChecking] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+
+  // KYC State - Added cancelledCheque
   const [kycData, setKycData] = useState({
     aadharCard: null,
     panCard: null,
     bankPassbook: null,
+    cancelledCheque: null,
     selfie: null
   });
 
@@ -150,6 +160,7 @@ const UserKyc = () => {
     aadharCard: '',
     panCard: '',
     bankPassbook: '',
+    cancelledCheque: '',
     selfie: ''
   });
 
@@ -157,6 +168,7 @@ const UserKyc = () => {
     aadharCard: false,
     panCard: false,
     bankPassbook: false,
+    cancelledCheque: false,
     selfie: false
   });
 
@@ -177,11 +189,35 @@ const UserKyc = () => {
     };
 
     loadSignupData();
+
+    // Set up SSE connection to fetch all users using EventSourcePolyfill
+    const eventSource = new EventSourcePolyfill(`${API_BASE_URL}/api/users`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const response = JSON.parse(event.data);
+        if (response.success && response.data) {
+          setAllUsers(response.data);
+        }
+      } catch (error) {
+        console.error('Error parsing SSE data:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+      eventSource.close();
+    };
+
+    // Cleanup on unmount
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   useEffect(() => {
     const backAction = () => {
-      if (showPopup || showSelfiePreview) {
+      if (showPopup || showSelfiePreview || showKYC || kycCompleted) {
         return true;
       }
       return false;
@@ -189,7 +225,7 @@ const UserKyc = () => {
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
-  }, [showPopup, showSelfiePreview]);
+  }, [showPopup, showSelfiePreview, showKYC, kycCompleted]);
 
   const showAlert = (message, isError = false) => {
     setAlert({ show: true, message, isError });
@@ -199,14 +235,90 @@ const UserKyc = () => {
     setAlert({ show: false, message: '', isError: false });
   };
 
+  // Validate PAN number format
+  const validatePanNumber = (pan) => {
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    return panRegex.test(pan);
+  };
+
+  // Check if PAN number already exists
+  const checkPanExists = (pan) => {
+    if (!pan || allUsers.length === 0) return false;
+    
+    return allUsers.some(user => 
+      user.panNumber && user.panNumber.toUpperCase() === pan.toUpperCase()
+    );
+  };
+
+  const handlePanNumberChange = (value) => {
+    const upperValue = value.toUpperCase();
+    setPanNumber(upperValue);
+    
+    if (!upperValue) {
+      setPanNumberError('');
+      return;
+    }
+
+    // Check format first
+    if (!validatePanNumber(upperValue)) {
+      setPanNumberError('Invalid PAN format. Example: ABCDE1234F');
+      return;
+    }
+
+    // Check if PAN already exists
+    setIsPanChecking(true);
+    setTimeout(() => {
+      if (checkPanExists(upperValue)) {
+        setPanNumberError('This PAN number is already registered. Please use a different PAN number.');
+      } else {
+        setPanNumberError('');
+      }
+      setIsPanChecking(false);
+    }, 300);
+  };
+
   const requestCameraPermission = async () => {
     try {
       const permission = Platform.OS === 'ios' 
         ? PERMISSIONS.IOS.CAMERA 
         : PERMISSIONS.ANDROID.CAMERA;
 
-      const result = await request(permission);
-      return result === RESULTS.GRANTED;
+      // First check current permission status
+      const checkResult = await check(permission);
+      
+      if (checkResult === RESULTS.GRANTED) {
+        return true;
+      }
+      
+      if (checkResult === RESULTS.DENIED) {
+        // Permission has not been requested yet, so request it
+        const requestResult = await request(permission);
+        return requestResult === RESULTS.GRANTED;
+      }
+      
+      if (checkResult === RESULTS.BLOCKED || checkResult === RESULTS.UNAVAILABLE) {
+        // Permission is blocked or unavailable
+        Alert.alert(
+          'Camera Permission Required',
+          'Please enable camera permission in your device settings to take selfie photos.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Open Settings', 
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              }
+            }
+          ]
+        );
+        return false;
+      }
+      
+      return false;
     } catch (error) {
       console.error('Permission error:', error);
       return false;
@@ -220,10 +332,38 @@ const UserKyc = () => {
           ? PERMISSIONS.ANDROID.READ_MEDIA_IMAGES
           : PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE;
 
-        const result = await request(permission);
-        return result === RESULTS.GRANTED;
+        // First check current permission status
+        const checkResult = await check(permission);
+        
+        if (checkResult === RESULTS.GRANTED) {
+          return true;
+        }
+        
+        if (checkResult === RESULTS.DENIED) {
+          // Permission has not been requested yet, so request it
+          const requestResult = await request(permission);
+          return requestResult === RESULTS.GRANTED;
+        }
+        
+        if (checkResult === RESULTS.BLOCKED || checkResult === RESULTS.UNAVAILABLE) {
+          // Permission is blocked or unavailable
+          Alert.alert(
+            'Storage Permission Required',
+            'Please enable storage permission in your device settings to access photos.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Open Settings', 
+                onPress: () => Linking.openSettings()
+              }
+            ]
+          );
+          return false;
+        }
+        
+        return checkResult === RESULTS.GRANTED;
       }
-      return true;
+      return true; // iOS doesn't need storage permission for image picker
     } catch (error) {
       console.error('Storage permission error:', error);
       return false;
@@ -232,32 +372,45 @@ const UserKyc = () => {
 
   // Selfie capture function
   const captureSelfie = async () => {
-    const hasPermission = await requestCameraPermission();
-    if (!hasPermission) {
-      showAlert('Camera permission is required to take selfie', true);
-      return;
-    }
-
-    const options = {
-      mediaType: 'photo',
-      quality: 0.8,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      cameraType: 'front', // Use front camera for selfie
-      includeBase64: false,
-      saveToPhotos: false,
-    };
-
-    launchCamera(options, (response) => {
-      if (response.didCancel || response.error) {
+    try {
+      const hasPermission = await requestCameraPermission();
+      
+      if (!hasPermission) {
+        // Permission was denied or blocked, alert already shown in requestCameraPermission
         return;
       }
 
-      if (response.assets && response.assets[0]) {
-        setTempSelfieUri(response.assets[0].uri);
-        setShowSelfiePreview(true);
-      }
-    });
+      const options = {
+        mediaType: 'photo',
+        quality: 0.8,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        cameraType: 'front', // Use front camera for selfie
+        includeBase64: false,
+        saveToPhotos: false,
+      };
+
+      launchCamera(options, (response) => {
+        if (response.didCancel) {
+          console.log('User cancelled camera');
+          return;
+        }
+        
+        if (response.error) {
+          console.error('Camera Error:', response.error);
+          showAlert('Failed to open camera. Please try again.', true);
+          return;
+        }
+
+        if (response.assets && response.assets[0]) {
+          setTempSelfieUri(response.assets[0].uri);
+          setShowSelfiePreview(true);
+        }
+      });
+    } catch (error) {
+      console.error('Error in captureSelfie:', error);
+      showAlert('Failed to open camera. Please try again.', true);
+    }
   };
 
   const confirmSelfie = () => {
@@ -327,54 +480,80 @@ const UserKyc = () => {
   };
 
   const openCamera = async (documentType) => {
-    const hasPermission = await requestCameraPermission();
-    if (!hasPermission) {
-      showAlert('Camera permission is required to take photos', true);
-      return;
-    }
-
-    const options = {
-      mediaType: 'photo',
-      quality: 0.8,
-      maxWidth: 1024,
-      maxHeight: 1024,
-    };
-
-    launchCamera(options, (response) => {
-      if (response.didCancel || response.error) {
+    try {
+      const hasPermission = await requestCameraPermission();
+      
+      if (!hasPermission) {
+        // Permission was denied or blocked, alert already shown
         return;
       }
 
-      if (response.assets && response.assets[0]) {
-        handleImageSelection(response.assets[0], documentType);
-      }
-    });
+      const options = {
+        mediaType: 'photo',
+        quality: 0.8,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      };
+
+      launchCamera(options, (response) => {
+        if (response.didCancel) {
+          console.log('User cancelled camera');
+          return;
+        }
+        
+        if (response.error) {
+          console.error('Camera Error:', response.error);
+          showAlert('Failed to open camera. Please try again.', true);
+          return;
+        }
+
+        if (response.assets && response.assets[0]) {
+          handleImageSelection(response.assets[0], documentType);
+        }
+      });
+    } catch (error) {
+      console.error('Error in openCamera:', error);
+      showAlert('Failed to open camera. Please try again.', true);
+    }
   };
 
   const openGallery = async (documentType) => {
-    const hasPermission = await requestStoragePermission();
-    if (!hasPermission) {
-      showAlert('Storage permission is required to access gallery', true);
-      return;
-    }
-
-    const options = {
-      mediaType: 'photo',
-      quality: 0.8,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      selectionLimit: 1,
-    };
-
-    launchImageLibrary(options, (response) => {
-      if (response.didCancel || response.error) {
+    try {
+      const hasPermission = await requestStoragePermission();
+      
+      if (!hasPermission) {
+        // Permission was denied or blocked, alert already shown
         return;
       }
 
-      if (response.assets && response.assets[0]) {
-        handleImageSelection(response.assets[0], documentType);
-      }
-    });
+      const options = {
+        mediaType: 'photo',
+        quality: 0.8,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        selectionLimit: 1,
+      };
+
+      launchImageLibrary(options, (response) => {
+        if (response.didCancel) {
+          console.log('User cancelled image picker');
+          return;
+        }
+        
+        if (response.error) {
+          console.error('ImagePicker Error:', response.error);
+          showAlert('Failed to access gallery. Please try again.', true);
+          return;
+        }
+
+        if (response.assets && response.assets[0]) {
+          handleImageSelection(response.assets[0], documentType);
+        }
+      });
+    } catch (error) {
+      console.error('Error in openGallery:', error);
+      showAlert('Failed to access gallery. Please try again.', true);
+    }
   };
 
   const handleImageSelection = (asset, documentType) => {
@@ -421,11 +600,28 @@ const UserKyc = () => {
   };
 
   const handleKYCSubmit = () => {
+    // Validate PAN number
+    if (!panNumber) {
+      showAlert('Please enter your PAN number', true);
+      return;
+    }
+
+    if (!validatePanNumber(panNumber)) {
+      showAlert('Please enter a valid PAN number (Format: ABCDE1234F)', true);
+      return;
+    }
+
+    // Check if PAN already exists
+    if (checkPanExists(panNumber)) {
+      showAlert('This PAN number is already registered. Please use a different PAN number.', true);
+      return;
+    }
+
     const { aadharCard, panCard, selfie } = kycData;
 
-    // Bank passbook is now optional, only check for required documents
+    // Validate only required documents (aadharCard, panCard, selfie) - bankPassbook and cancelledCheque are optional
     if (!aadharCard || !panCard || !selfie) {
-      showAlert('Please upload Aadhar Card, PAN Card, and take a selfie. Bank Passbook is optional.', true);
+      showAlert('Please upload all required documents (Aadhar Card, PAN Card, and Selfie)', true);
       return;
     }
 
@@ -450,9 +646,14 @@ const UserKyc = () => {
         throw new Error('Required signup data is missing');
       }
 
-      // Updated validation - bank passbook is now optional
+      // Validate required KYC documents (aadharCard, panCard, selfie) - bankPassbook and cancelledCheque are optional
       if (!kycData.aadharCard || !kycData.panCard || !kycData.selfie) {
-        throw new Error('Aadhar Card, PAN Card, and Selfie are required. Bank Passbook is optional.');
+        throw new Error('Required KYC documents (Aadhar Card, PAN Card, and Selfie) are required');
+      }
+
+      // Validate PAN number
+      if (!panNumber || !validatePanNumber(panNumber)) {
+        throw new Error('Valid PAN number is required');
       }
 
       console.log('=== CREATING FORM DATA ===');
@@ -468,6 +669,7 @@ const UserKyc = () => {
       formData.append('email', signupData.email?.trim() || '');
       formData.append('city', signupData.city?.trim() || '');
       formData.append('state', signupData.state?.trim() || '');
+      formData.append('panNumber', panNumber);
 
       console.log('Text fields added to FormData');
 
@@ -485,12 +687,19 @@ const UserKyc = () => {
       formData.append('panCard', formatFileForRN(kycData.panCard, 'pan.jpg'));
       formData.append('selfie', formatFileForRN(kycData.selfie, 'selfie.jpg'));
 
-      // Bank passbook is optional - only append if exists
+      // Add optional files only if they exist
       if (kycData.bankPassbook) {
         formData.append('bankPassbook', formatFileForRN(kycData.bankPassbook, 'passbook.jpg'));
         console.log('Bank Passbook added to FormData');
       } else {
         console.log('Bank Passbook not provided (optional)');
+      }
+
+      if (kycData.cancelledCheque) {
+        formData.append('cancelledCheque', formatFileForRN(kycData.cancelledCheque, 'cancelledCheque.jpg'));
+        console.log('Cancelled Cheque added to FormData');
+      } else {
+        console.log('Cancelled Cheque not provided (optional)');
       }
 
       console.log('Files added to FormData');
@@ -635,7 +844,7 @@ const UserKyc = () => {
     <View style={styles.selfieSection}>
       <View style={styles.documentLabel}>
         <Icon name="camera" size={18} color="#4F46E5" />
-        <Text style={styles.documentLabelText}>Live Selfie</Text>
+        <Text style={styles.documentLabelText}>Live Selfie *</Text>
       </View>
       
       <TouchableOpacity
@@ -728,6 +937,49 @@ const UserKyc = () => {
                 Please upload the following documents and take a live selfie (Max 5MB each)
               </Text>
 
+              {/* PAN Number Input */}
+              <View style={styles.documentUpload}>
+                <View style={styles.documentLabel}>
+                  <Icon name="card-outline" size={18} color="#4F46E5" />
+                  <Text style={styles.documentLabelText}>PAN Number *</Text>
+                </View>
+                <View style={styles.panInputContainer}>
+                  <TextInput
+                    style={[
+                      styles.panInput,
+                      panNumberError && styles.panInputError
+                    ]}
+                    value={panNumber}
+                    onChangeText={handlePanNumberChange}
+                    placeholder="Enter PAN Number"
+                    placeholderTextColor="#9CA3AF"
+                    maxLength={10}
+                    autoCapitalize="characters"
+                    editable={!isPanChecking}
+                  />
+                  {isPanChecking && (
+                    <View style={styles.panCheckingContainer}>
+                      <ActivityIndicator size="small" color="#4F46E5" />
+                      <Text style={styles.panCheckingText}>Checking PAN number...</Text>
+                    </View>
+                  )}
+                  {panNumberError && !isPanChecking && (
+                    <Text style={styles.errorText}>{panNumberError}</Text>
+                  )}
+                  {!panNumberError && !isPanChecking && panNumber && validatePanNumber(panNumber) && (
+                    <View style={styles.panAvailableContainer}>
+                      <Icon name="checkmark-circle" size={16} color="#059669" />
+                      <Text style={styles.panAvailableText}>PAN number is available</Text>
+                    </View>
+                  )}
+                  {!panNumber && (
+                    <Text style={styles.panFormatText}>
+                      Format: 5 letters, 4 digits, 1 letter (Example: ABCDE1234F)
+                    </Text>
+                  )}
+                </View>
+              </View>
+
               <DocumentUpload
                 documentType="aadharCard"
                 label="Aadhar Card"
@@ -747,30 +999,39 @@ const UserKyc = () => {
                 isOptional={true}
               />
 
+              <DocumentUpload
+                documentType="cancelledCheque"
+                label="Cancelled Cheque"
+                iconName="document-text-outline"
+                isOptional={true}
+              />
+
               {/* Selfie Capture Section */}
               <SelfieCapture />
 
               <TouchableOpacity
                 style={[
                   styles.submitKycBtn,
-                  (!kycData.aadharCard || !kycData.panCard || !kycData.selfie) && 
+                  (!kycData.aadharCard || !kycData.panCard || !kycData.selfie || !panNumber || panNumberError || isPanChecking) && 
                   styles.submitKycBtnDisabled
                 ]}
                 onPress={handleKYCSubmit}
-                disabled={!kycData.aadharCard || !kycData.panCard || !kycData.selfie}
+                disabled={!kycData.aadharCard || !kycData.panCard || !kycData.selfie || !panNumber || panNumberError || isPanChecking}
               >
-                <Text style={styles.submitKycBtnText}>Submit KYC Documents</Text>
+                <Text style={styles.submitKycBtnText}>
+                  {isPanChecking ? 'Validating PAN...' : 'Submit KYC Documents'}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {kycCompleted && (
+          {kycCompleted && !showPopup && (
             <View style={styles.accountCreation}>
               <View style={styles.kycSuccess}>
                 <Icon name="checkmark-circle" size={48} color="#059669" />
                 <Text style={styles.kycSuccessTitle}>KYC Submission Completed!</Text>
                 <Text style={styles.kycSuccessText}>
-                  Your documents and selfie have been uploaded successfully. You can now create your account.
+                  Your documents including selfie and PAN number have been uploaded successfully. You can now create your account.
                 </Text>
               </View>
 
@@ -906,6 +1167,7 @@ const UserKyc = () => {
                     ⏰ Verification process takes up to 24 hours{'\n'}
                     🔐 Try logging in after 24 hours{'\n'}
                     📋 Save your User ID & Referral ID{'\n'}
+                    👥 Share your Referral ID to earn rewards when friends join{'\n'}
                     ❓ No response? Contact admin through help section
                   </Text>
                 </View>

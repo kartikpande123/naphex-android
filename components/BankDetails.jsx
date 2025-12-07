@@ -10,9 +10,13 @@ import {
   StyleSheet,
   StatusBar,
   ToastAndroid,
+  Image,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Feather';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import API_BASE_URL from './ApiConfig';
 
 const BankDetails = () => {
@@ -24,6 +28,7 @@ const BankDetails = () => {
   const [editingUpi, setEditingUpi] = useState(false);
   const [showAddBank, setShowAddBank] = useState(false);
   const [showAddUpi, setShowAddUpi] = useState(false);
+  const [uploadingDocuments, setUploadingDocuments] = useState(false);
 
   // Form states
   const [bankForm, setBankForm] = useState({
@@ -36,6 +41,20 @@ const BankDetails = () => {
     upiId: '',
     bankingId: ''
   });
+
+  // Document upload states
+  const [documents, setDocuments] = useState({
+    passbookPhoto: null,
+    cancelledChequePhoto: null
+  });
+
+  const [documentPreviews, setDocumentPreviews] = useState({
+    passbookPhoto: null,
+    cancelledChequePhoto: null
+  });
+
+  // Track if documents already exist in database (from KYC)
+  const [hasExistingDocuments, setHasExistingDocuments] = useState(false);
 
   // Get user data from AsyncStorage
   useEffect(() => {
@@ -93,6 +112,217 @@ const BankDetails = () => {
       if (upiEntry) {
         setUpiDetails({ ...upiEntry[1], bankingId: upiEntry[0] });
       }
+    }
+
+    // Check if documents exist in KYC first (from registration)
+    let hasKycDocs = false;
+    if (data.kyc) {
+      if (data.kyc.bankPassbookUrl) {
+        setDocumentPreviews(prev => ({ ...prev, passbookPhoto: data.kyc.bankPassbookUrl }));
+        hasKycDocs = true;
+      }
+      if (data.kyc.cancelledChequeUrl) {
+        setDocumentPreviews(prev => ({ ...prev, cancelledChequePhoto: data.kyc.cancelledChequeUrl }));
+        hasKycDocs = true;
+      }
+    }
+
+    // Check if documents uploaded from in-game
+    if (data.kyc) {
+      if (data.kyc.bankPassbookUrlByInGame) {
+        setDocumentPreviews(prev => ({ ...prev, passbookPhoto: data.kyc.bankPassbookUrlByInGame }));
+        hasKycDocs = true;
+      }
+      if (data.kyc.cancelledChequeUrlByInGame) {
+        setDocumentPreviews(prev => ({ ...prev, cancelledChequePhoto: data.kyc.cancelledChequeUrlByInGame }));
+        hasKycDocs = true;
+      }
+    }
+
+    // Set flag to hide upload section if documents already exist in database
+    setHasExistingDocuments(hasKycDocs);
+  };
+
+  // Request permissions
+  const requestCameraPermission = async () => {
+    try {
+      const permission = Platform.OS === 'ios' 
+        ? PERMISSIONS.IOS.CAMERA 
+        : PERMISSIONS.ANDROID.CAMERA;
+
+      const result = await request(permission);
+      return result === RESULTS.GRANTED;
+    } catch (error) {
+      console.error('Permission error:', error);
+      return false;
+    }
+  };
+
+  const requestStoragePermission = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        const permission = Platform.Version >= 33 
+          ? PERMISSIONS.ANDROID.READ_MEDIA_IMAGES
+          : PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE;
+
+        const result = await request(permission);
+        return result === RESULTS.GRANTED;
+      }
+      return true;
+    } catch (error) {
+      console.error('Storage permission error:', error);
+      return false;
+    }
+  };
+
+  // Show image picker options
+  const showImagePicker = (documentType) => {
+    Alert.alert(
+      'Select Image',
+      'Choose an option to select document',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Camera', onPress: () => openCamera(documentType) },
+        { text: 'Gallery', onPress: () => openGallery(documentType) },
+      ]
+    );
+  };
+
+  // Open camera
+  const openCamera = async (documentType) => {
+    const hasPermission = await requestCameraPermission();
+    if (!hasPermission) {
+      ToastAndroid.show('Camera permission is required', ToastAndroid.SHORT);
+      return;
+    }
+
+    const options = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    };
+
+    launchCamera(options, (response) => {
+      if (response.didCancel || response.error) {
+        return;
+      }
+
+      if (response.assets && response.assets[0]) {
+        handleImageSelection(response.assets[0], documentType);
+      }
+    });
+  };
+
+  // Open gallery
+  const openGallery = async (documentType) => {
+    const hasPermission = await requestStoragePermission();
+    if (!hasPermission) {
+      ToastAndroid.show('Storage permission is required', ToastAndroid.SHORT);
+      return;
+    }
+
+    const options = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      selectionLimit: 1,
+    };
+
+    launchImageLibrary(options, (response) => {
+      if (response.didCancel || response.error) {
+        return;
+      }
+
+      if (response.assets && response.assets[0]) {
+        handleImageSelection(response.assets[0], documentType);
+      }
+    });
+  };
+
+  // Handle image selection
+  const handleImageSelection = (asset, documentType) => {
+    // Validate file size (max 5MB)
+    if (asset.fileSize > 5 * 1024 * 1024) {
+      ToastAndroid.show('File size should not exceed 5MB', ToastAndroid.SHORT);
+      return;
+    }
+
+    const file = {
+      uri: asset.uri,
+      type: asset.type || 'image/jpeg',
+      name: asset.fileName || `${documentType}.jpg`,
+      fileSize: asset.fileSize,
+    };
+
+    // Update documents state
+    setDocuments(prev => ({ ...prev, [documentType]: file }));
+    setDocumentPreviews(prev => ({ ...prev, [documentType]: asset.uri }));
+    
+    ToastAndroid.show(`${documentType === 'passbookPhoto' ? 'Passbook' : 'Cheque'} photo selected`, ToastAndroid.SHORT);
+  };
+
+  // Remove selected file
+  const removeFile = (documentType) => {
+    setDocuments(prev => ({ ...prev, [documentType]: null }));
+    setDocumentPreviews(prev => ({ ...prev, [documentType]: null }));
+  };
+
+  // Upload documents
+  const handleUploadDocuments = async () => {
+    if (!documents.passbookPhoto && !documents.cancelledChequePhoto) {
+      ToastAndroid.show('Please select at least one document to upload', ToastAndroid.SHORT);
+      return;
+    }
+
+    if (!userData?.phoneNo) {
+      ToastAndroid.show('User information not found', ToastAndroid.SHORT);
+      return;
+    }
+
+    setUploadingDocuments(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('phoneNo', userData.phoneNo);
+      
+      if (documents.passbookPhoto) {
+        formData.append('passbookPhoto', {
+          uri: documents.passbookPhoto.uri,
+          type: documents.passbookPhoto.type,
+          name: documents.passbookPhoto.name,
+        });
+      }
+      if (documents.cancelledChequePhoto) {
+        formData.append('cancelledChequePhoto', {
+          uri: documents.cancelledChequePhoto.uri,
+          type: documents.cancelledChequePhoto.type,
+          name: documents.cancelledChequePhoto.name,
+        });
+      }
+
+      const response = await fetch(`${API_BASE_URL}/banking/upload-documents`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        ToastAndroid.show('Documents uploaded successfully!', ToastAndroid.SHORT);
+        // Mark that documents now exist in database
+        setHasExistingDocuments(true);
+        // Keep the previews but clear the file objects
+        setDocuments({ passbookPhoto: null, cancelledChequePhoto: null });
+      } else {
+        ToastAndroid.show('Failed to upload documents: ' + result.error, ToastAndroid.LONG);
+      }
+    } catch (error) {
+      console.error('Error uploading documents:', error);
+      ToastAndroid.show('Failed to upload documents', ToastAndroid.SHORT);
+    } finally {
+      setUploadingDocuments(false);
     }
   };
 
@@ -313,6 +543,113 @@ const BankDetails = () => {
       </View>
 
       <View style={styles.content}>
+        {/* Document Upload Section - Only show if documents don't exist in database */}
+        {!hasExistingDocuments && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderContent}>
+                <Icon name="file-text" size={20} color="white" />
+                <Text style={styles.cardHeaderTitle}>Bank Documents</Text>
+                <View style={[styles.badge, styles.badgeInfo, { marginLeft: 8 }]}>
+                  <Text style={styles.badgeTextDark}>Upload One or Both</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.cardBody}>
+              <View style={styles.alertInfo}>
+                <Icon name="alert-circle" size={20} color="#3b82f6" />
+                <Text style={styles.alertInfoText}>
+                  You can upload either Bank Passbook OR Cancelled Cheque, or both documents for verification.
+                </Text>
+              </View>
+
+              {/* Bank Passbook Photo */}
+              <View style={styles.documentSection}>
+                <Text style={styles.documentLabel}>Bank Passbook Photo</Text>
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={() => showImagePicker('passbookPhoto')}
+                >
+                  <Icon name="upload" size={16} color="#2563eb" />
+                  <Text style={styles.uploadButtonText}>Choose File</Text>
+                </TouchableOpacity>
+                <Text style={styles.documentHint}>
+                  Accepted formats: JPG, PNG (Max 5MB)
+                </Text>
+
+                {documentPreviews.passbookPhoto && (
+                  <View style={styles.previewContainer}>
+                    <Image
+                      source={{ uri: documentPreviews.passbookPhoto }}
+                      style={styles.previewImage}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => removeFile('passbookPhoto')}
+                    >
+                      <Icon name="x" size={16} color="white" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              {/* Cancelled Cheque Photo */}
+              <View style={styles.documentSection}>
+                <Text style={styles.documentLabel}>Cancelled Cheque Photo</Text>
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={() => showImagePicker('cancelledChequePhoto')}
+                >
+                  <Icon name="upload" size={16} color="#2563eb" />
+                  <Text style={styles.uploadButtonText}>Choose File</Text>
+                </TouchableOpacity>
+                <Text style={styles.documentHint}>
+                  Accepted formats: JPG, PNG (Max 5MB)
+                </Text>
+
+                {documentPreviews.cancelledChequePhoto && (
+                  <View style={styles.previewContainer}>
+                    <Image
+                      source={{ uri: documentPreviews.cancelledChequePhoto }}
+                      style={styles.previewImage}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => removeFile('cancelledChequePhoto')}
+                    >
+                      <Icon name="x" size={16} color="white" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.uploadDocumentsButton,
+                  (uploadingDocuments || (!documents.passbookPhoto && !documents.cancelledChequePhoto)) && styles.disabledButton
+                ]}
+                onPress={handleUploadDocuments}
+                disabled={uploadingDocuments || (!documents.passbookPhoto && !documents.cancelledChequePhoto)}
+              >
+                {uploadingDocuments ? (
+                  <>
+                    <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
+                    <Text style={styles.uploadDocumentsButtonText}>Uploading...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Icon name="upload" size={16} color="white" />
+                    <Text style={styles.uploadDocumentsButtonText}>Upload Documents</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Bank Details Section */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -521,6 +858,10 @@ const BankDetails = () => {
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoBullet}>•</Text>
+              <Text style={styles.infoText}>Upload clear photos of your bank passbook and cancelled cheque for verification</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoBullet}>•</Text>
               <Text style={styles.infoText}>You can edit your details anytime, but cannot delete them once added</Text>
             </View>
             <View style={styles.infoItem}>
@@ -624,6 +965,9 @@ const styles = StyleSheet.create({
   badgeWarning: {
     backgroundColor: '#fbbf24',
   },
+  badgeInfo: {
+    backgroundColor: '#3b82f6',
+  },
   badgeText: {
     fontSize: 12,
     fontWeight: '600',
@@ -637,6 +981,94 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     padding: 20,
+  },
+  alertInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#dbeafe',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  alertInfoText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 13,
+    color: '#1e40af',
+    lineHeight: 18,
+  },
+  documentSection: {
+    marginBottom: 20,
+  },
+  documentLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  uploadButtonText: {
+    color: '#2563eb',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  documentHint: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  previewContainer: {
+    position: 'relative',
+    marginTop: 12,
+  },
+  previewImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#ef4444',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadDocumentsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  uploadDocumentsButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#9ca3af',
   },
   emptyState: {
     alignItems: 'center',

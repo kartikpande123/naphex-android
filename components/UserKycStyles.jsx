@@ -23,6 +23,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 32,
+    marginTop:30
   },
   title: {
     fontSize: 32,
@@ -128,6 +129,11 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 16,
   },
+  optionalText: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    fontWeight: '400',
+  },
   uploadArea: {
     borderWidth: 2,
     borderColor: '#D1D5DB',
@@ -176,6 +182,56 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#DC2626',
     fontSize: 12,
+    marginTop: 8,
+  },
+  
+  // PAN Number Input Styles
+  panInputContainer: {
+    width: '100%',
+  },
+  panInput: {
+    width: '100%',
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    backgroundColor: 'white',
+    letterSpacing: 1,
+    color:"black"
+  },
+  panInputError: {
+    borderColor: '#DC2626',
+  },
+  panCheckingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  panCheckingText: {
+    color: '#4F46E5',
+    fontSize: 13,
+    marginLeft: 6,
+  },
+  panAvailableContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  panAvailableText: {
+    color: '#059669',
+    fontSize: 13,
+    marginLeft: 6,
+  },
+  panFormatText: {
+    color: '#6B7280',
+    fontSize: 13,
+    textAlign: 'center',
     marginTop: 8,
   },
   
@@ -264,11 +320,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop:50
   },
   selfiePreviewTitle: {
     color: 'white',
     fontSize: 18,
     fontWeight: '600',
+    marginTop:50
   },
   selfieImageContainer: {
     flex: 1,
@@ -285,10 +343,11 @@ const styles = StyleSheet.create({
   },
   selfiePreviewActions: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     paddingHorizontal: 40,
-    paddingBottom: Platform.OS === 'ios' ? 50 : 30,
+    paddingBottom: 80,
     paddingTop: 20,
+    gap:10
   },
   retakeSelfieBtn: {
     flexDirection: 'row',

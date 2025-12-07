@@ -923,11 +923,6 @@ const SignupPage = () => {
                     )}
                   </View>
                 )}
-                {referralStatus.referrerName && (
-                  <Text style={styles.referrerName}>
-                    Referred by: {referralStatus.referrerName}
-                  </Text>
-                )}
                 {errors.referralId && (
                   <Text style={styles.errorMessage}>⚠ {errors.referralId}</Text>
                 )}
