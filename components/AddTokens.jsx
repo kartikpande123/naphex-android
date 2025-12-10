@@ -704,6 +704,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderRadius: 12,
     backgroundColor: '#ffffff',
+    color:"black"
   },
   inputSuffix: {
     position: 'absolute',
