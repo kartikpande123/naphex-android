@@ -21,7 +21,7 @@ import API_BASE_URL from './ApiConfig';
 const { width, height } = Dimensions.get('window');
 
 // Import your QR code image - make sure to add this image to your React Native assets
-const upiQrCode = require('../images/upi_bar.jpg'); // Adjust path as needed
+const upiQrCode = require('../images/upi_bar2.jpg'); // Adjust path as needed
 
 const AddTokens = ({ navigation, onTokensUpdated }) => {
   const [loading, setLoading] = useState(false);
