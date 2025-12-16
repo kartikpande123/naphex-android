@@ -37,7 +37,12 @@ export default function EntryFees({ navigation, onContinue }) {
   const [paymentStatus, setPaymentStatus] = useState('');
 
   const UPI_ID = "9019842426-2@ybl";
-  const ENTRY_FEE_AMOUNT = 500;
+  
+  // Calculate entry fee with 28% tax
+  const BASE_AMOUNT = 1171.875; // Base amount before tax (1500 / 1.28)
+  const TAX_RATE = 0.28; // 28% tax
+  const TAX_AMOUNT = BASE_AMOUNT * TAX_RATE; // 328.125
+  const TOTAL_AMOUNT = 1500; // Total amount including tax
 
   useEffect(() => {
     // Get user data and check entry fee status
@@ -72,6 +77,7 @@ export default function EntryFees({ navigation, onContinue }) {
     const userData = await AsyncStorage.getItem('userData');
     if (!userData) {
       setEntryFeeStatus('unpaid');
+      clearPaymentForm();
       return;
     }
 
@@ -80,6 +86,7 @@ export default function EntryFees({ navigation, onContinue }) {
 
     if (!phoneNo) {
       setEntryFeeStatus('unpaid');
+      clearPaymentForm();
       return;
     }
 
@@ -100,13 +107,27 @@ export default function EntryFees({ navigation, onContinue }) {
       } else if (data.success && data.entryFee === 'pending') {
         setEntryFeeStatus('pending');
         setVerificationStatus('Your payment is under verification. Please wait for admin approval.');
+      } else if (data.success && data.entryFee === 'unpaid') {
+        setEntryFeeStatus('unpaid');
+        clearPaymentForm();
       } else {
         setEntryFeeStatus('unpaid');
+        clearPaymentForm();
       }
     } catch (err) {
       console.error('Error checking entry fee status:', err);
       setEntryFeeStatus('unpaid');
+      clearPaymentForm();
     }
+  };
+
+  const clearPaymentForm = () => {
+    setTransactionId('');
+    setPaymentScreenshot(null);
+    setScreenshotPreview('');
+    setShowPaymentForm(false);
+    setVerificationStatus('');
+    setPaymentStatus('');
   };
 
   const handleLogout = async () => {
@@ -181,7 +202,7 @@ export default function EntryFees({ navigation, onContinue }) {
       const formData = new FormData();
       formData.append('phoneNo', phone);
       formData.append('transactionId', transactionId.trim() || 'N/A');
-      formData.append('amount', ENTRY_FEE_AMOUNT.toString());
+      formData.append('amount', TOTAL_AMOUNT.toString());
       
       // Append the image file
       formData.append('screenshot', {
@@ -204,10 +225,7 @@ export default function EntryFees({ navigation, onContinue }) {
         setEntryFeeStatus('pending');
         setVerificationStatus('✅ Payment details submitted successfully! Your payment is under verification. Admin will verify your payment soon.');
         setShowPaymentForm(false);
-        setTransactionId('');
-        setPaymentScreenshot(null);
-        setScreenshotPreview('');
-        setPaymentStatus('');
+        clearPaymentForm();
         
         Alert.alert(
           'Success',
@@ -225,15 +243,6 @@ export default function EntryFees({ navigation, onContinue }) {
     } finally {
       setIsVerifying(false);
     }
-  };
-
-  const clearPaymentForm = () => {
-    setShowPaymentForm(false);
-    setTransactionId('');
-    setPaymentScreenshot(null);
-    setScreenshotPreview('');
-    setVerificationStatus('');
-    setPaymentStatus('');
   };
 
   // Checking Status Screen
@@ -289,7 +298,7 @@ export default function EntryFees({ navigation, onContinue }) {
               
               {/* Header */}
               <View style={styles.header}>
-                <Text style={styles.headerTitle}>🎮 Game Entry - ₹500</Text>
+                <Text style={styles.headerTitle}>🎮 Game Entry - ₹1500</Text>
                 <TouchableOpacity
                   style={styles.logoutButton}
                   onPress={() => setShowLogoutConfirm(true)}
@@ -329,13 +338,35 @@ export default function EntryFees({ navigation, onContinue }) {
                   <>
                     <Text style={styles.title}>Join the Game Room</Text>
                     <Text style={styles.subtitle}>
-                      Unlock your access to play and compete. Entry fee is ₹500.
+                      Unlock your access to play and compete.
                     </Text>
+
+                    {/* Price Breakdown */}
+                    <View style={styles.priceBreakdownContainer}>
+                      <Text style={styles.priceBreakdownTitle}>💰 Entry Fee Breakdown:</Text>
+                      
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>Base Amount:</Text>
+                        <Text style={styles.priceValue}>₹{BASE_AMOUNT.toFixed(2)}</Text>
+                      </View>
+                      
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>Tax (28%):</Text>
+                        <Text style={styles.priceValue}>₹{TAX_AMOUNT.toFixed(2)}</Text>
+                      </View>
+                      
+                      <View style={styles.priceDivider} />
+                      
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceTotalLabel}>Total Amount:</Text>
+                        <Text style={styles.priceTotalValue}>₹{TOTAL_AMOUNT}</Text>
+                      </View>
+                    </View>
 
                     {/* Bonus Info */}
                     <View style={styles.bonusContainer}>
                       <Text style={styles.bonusText}>
-                        🎁 <Text style={styles.bonusTextBold}>Bonus:</Text> Unlock 200 tokens instantly upon completing the entry fee!
+                        🎁 <Text style={styles.bonusTextBold}>Bonus:</Text> Unlock 1080 tokens instantly upon completing the entry fee!
                       </Text>
                     </View>
 
@@ -351,7 +382,7 @@ export default function EntryFees({ navigation, onContinue }) {
                       onPress={handlePayNow}
                       disabled={loading}
                     >
-                      <Text style={styles.buttonText}>💳 Pay ₹500 Now</Text>
+                      <Text style={styles.buttonText}>💳 Pay ₹{TOTAL_AMOUNT} Now</Text>
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -433,19 +464,6 @@ export default function EntryFees({ navigation, onContinue }) {
                         <Text style={styles.previewText}>✅ Screenshot uploaded</Text>
                       </View>
                     )}
-
-                    {/* Order Summary */}
-                    <View style={styles.summaryContainer}>
-                      <Text style={styles.summaryTitle}>Order Summary</Text>
-                      <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Entry Fee:</Text>
-                        <Text style={styles.summaryValue}>₹{ENTRY_FEE_AMOUNT}</Text>
-                      </View>
-                      <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Bonus Tokens:</Text>
-                        <Text style={styles.summaryValue}>200 tokens</Text>
-                      </View>
-                    </View>
 
                     {/* Status Display */}
                     {verificationStatus ? (
@@ -607,17 +625,60 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     lineHeight: 22,
   },
-  bonusContainer: {
+  // Price Breakdown Styles
+  priceBreakdownContainer: {
     backgroundColor: '#e6f2ff',
     borderWidth: 1,
     borderColor: '#b8daff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  priceBreakdownTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#004085',
+    marginBottom: 12,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  priceLabel: {
+    fontSize: 13,
+    color: '#004085',
+  },
+  priceValue: {
+    fontSize: 13,
+    color: '#004085',
+  },
+  priceDivider: {
+    height: 1,
+    backgroundColor: '#b8daff',
+    marginVertical: 8,
+  },
+  priceTotalLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#004085',
+  },
+  priceTotalValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#004085',
+  },
+  bonusContainer: {
+    backgroundColor: '#d4edda',
+    borderWidth: 1,
+    borderColor: '#c3e6cb',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
   },
   bonusText: {
     fontSize: 14,
-    color: '#004085',
+    color: '#155724',
     textAlign: 'center',
   },
   bonusTextBold: {
@@ -753,6 +814,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
     backgroundColor: '#f8f9fa',
+    color:"black"
   },
   uploadButton: {
     backgroundColor: '#007bff',
@@ -786,34 +848,6 @@ const styles = StyleSheet.create({
     color: '#28a745',
     fontSize: 12,
     marginTop: 8,
-  },
-  summaryContainer: {
-    backgroundColor: '#f0fdf4',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  summaryTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#065f46',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  summaryLabel: {
-    fontSize: 13,
-    color: '#065f46',
-    fontWeight: '600',
-  },
-  summaryValue: {
-    fontSize: 13,
-    color: '#065f46',
-    fontWeight: '700',
   },
   statusContainer: {
     borderRadius: 6,

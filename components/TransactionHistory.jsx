@@ -450,12 +450,7 @@ const TransactionHistory = () => {
               </Text>
             </View>
           </View>
-
-          <View style={styles.transactionRow}>
-            <Text style={styles.label}>Amount Requested:</Text>
-            <Text style={styles.amount}>₹{formatCurrency(item.amountRequested)}</Text>
-          </View>
-
+          
           <View style={styles.transactionRow}>
             <Text style={styles.label}>Amount Credited:</Text>
             <Text style={[

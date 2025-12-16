@@ -18,6 +18,7 @@ import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import API_BASE_URL from './ApiConfig';
 import BottomNavigation from './BottomNavigation';
+import BonusSteps from './BonusSteps';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -32,6 +33,7 @@ const FriendsEarnings = ({ navigation }) => {
   const [showFullUI, setShowFullUI] = useState(false);
   const [totalPlayedAmount, setTotalPlayedAmount] = useState(0);
   const [dateSearch, setDateSearch] = useState('');
+  const [showBonusStepsModal, setShowBonusStepsModal] = useState(false);
 
   // New states for add tokens functionality
   const [showAddTokensModal, setShowAddTokensModal] = useState(false);
@@ -87,6 +89,8 @@ const FriendsEarnings = ({ navigation }) => {
 
     setRequestedAmount(value);
   };
+
+  
 
   // Transfer Binary Tokens to Game Tokens Function
   const handleTransferBinaryTokens = async () => {
@@ -166,6 +170,11 @@ const FriendsEarnings = ({ navigation }) => {
       setAddingTokens(false);
     }
   };
+
+
+  const handleOpenBonusSteps = () => {
+  setShowBonusStepsModal(true);
+};
 
   // Open Transfer Tokens Modal
   const handleAddIntoGame = () => {
@@ -765,6 +774,25 @@ const FriendsEarnings = ({ navigation }) => {
                   See Binary Tree
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleOpenBonusSteps}
+                style={[
+                  styles.binaryButton,
+                  {
+                    backgroundColor: colors.secondary,
+                    shadowColor: colors.shadow,
+                  },
+                ]}
+                activeOpacity={0.8}
+              >
+                <Icon name="check-circle" size={16} color={colors.white} />
+                <Text
+                  style={[styles.binaryButtonText, { color: colors.white }]}
+                >
+                  Bonus Steps
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <View
@@ -1272,6 +1300,10 @@ const FriendsEarnings = ({ navigation }) => {
 
         {/* Bottom Navigation */}
         <BottomNavigation activeTab="" />
+        <BonusSteps
+          visible={showBonusStepsModal}
+          onClose={() => setShowBonusStepsModal(false)}
+        />
       </View>
     );
   }
@@ -1378,6 +1410,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     alignSelf: 'flex-start',
+    marginBottom: 10,
   },
   binaryButtonText: {
     fontSize: 14,
