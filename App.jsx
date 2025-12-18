@@ -32,6 +32,7 @@ import HowToPlay from './components/HowToPlay';
 import UserTokenRequest from './components/UserTokenRequest';
 import UserWins from './components/UserWins';
 import IngameTransaction from './components/IngameTransaction';
+import ChartResults from './components/ChartResults';
 
 const Stack = createStackNavigator();
 
@@ -75,6 +76,7 @@ function App() {
         <Stack.Screen name="UserTokenRequest" component={UserTokenRequest} />
         <Stack.Screen name="UserWins" component={UserWins} />
         <Stack.Screen name="IngameTransaction" component={IngameTransaction} />
+        <Stack.Screen name="ChartResults" component={ChartResults} />
       </Stack.Navigator>
     </NavigationContainer>
   );

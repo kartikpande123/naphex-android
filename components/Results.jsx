@@ -15,6 +15,7 @@ import { EventSourcePolyfill } from 'event-source-polyfill';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
+import { useNavigation } from '@react-navigation/native';
 
 // Import your number image assets
 import number0 from '../images/picture-0.png';
@@ -32,6 +33,7 @@ import API_BASE_URL from './ApiConfig';
 const { width } = Dimensions.get('window');
 
 const ResultsDashboard = () => {
+  const navigation = useNavigation();
   const [results, setResults] = useState({
     date: null,
     todayResults: { session1: null, session2: null },
@@ -514,6 +516,11 @@ const ResultsDashboard = () => {
     connectSSE();
   };
 
+  // Navigation handler
+  const handleNavigateToChartResults = () => {
+    navigation.navigate('ChartResults');
+  };
+
   // Connection status indicator
   const renderConnectionStatus = () => {
     let statusColor = '#28a745';
@@ -575,6 +582,20 @@ const ResultsDashboard = () => {
         style={styles.headerContainer}
       >
         <Text style={styles.headerTitle}>Results</Text>
+        
+        {/* Navigation Button */}
+        <TouchableOpacity 
+          style={styles.chartButton}
+          onPress={handleNavigateToChartResults}
+        >
+          <LinearGradient
+            colors={['#1a73e8', '#0d47a1']}
+            style={styles.chartButtonGradient}
+          >
+            <Icon name="bar-chart" size={20} color="white" style={styles.chartButtonIcon} />
+            <Text style={styles.chartButtonText}>Fruit Game Chart Results</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </LinearGradient>
 
       {/* Error Alert (if any) */}
@@ -773,6 +794,34 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 10,
+  },
+  chartButton: {
+    marginTop: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  chartButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  chartButtonIcon: {
+    marginRight: 8,
+  },
+  chartButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   statusIndicator: {
     flexDirection: 'row',
